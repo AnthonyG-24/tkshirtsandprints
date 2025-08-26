@@ -13,12 +13,17 @@ let cartCount = 0;
 
 async function loadConfig() {
   try {
-    const res = await fetch("/config.json"); // leading slash!
-    const data = await res.json();
-    shopDomain = data.shopDomain;
-    token = data.token;
-  } catch {
-    showCollectionError("Shopify config not loaded. Check config.json.");
+    // Pull from Netlify environment variables (replace with your PUBLIC_ variables)
+    shopDomain = process.env.PUBLIC_SHOPIFY_DOMAIN;
+    token = process.env.PUBLIC_SHOPIFY_TOKEN;
+
+    if (!shopDomain || !token) {
+      throw new Error(
+        "Shopify config not loaded. Check Netlify environment variables."
+      );
+    }
+  } catch (err) {
+    showCollectionError(err.message);
   }
 }
 
