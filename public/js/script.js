@@ -10,14 +10,15 @@ const placeholderImage = "";
 let checkoutId = null;
 let checkoutUrl = null;
 let cartCount = 0;
+
 async function loadConfig() {
   try {
-    const res = await fetch("/.netlify/functions/getShopConfig");
+    const res = await fetch("config.json");
     const data = await res.json();
     shopDomain = data.shopDomain;
     token = data.token;
   } catch {
-    showCollectionError("Shopify config not loaded.");
+    showCollectionError("Shopify config not loaded. Check config.json.");
   }
 }
 
@@ -41,17 +42,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   const popup = document.getElementById("cart-popup");
   if (!cartLink || !popup) return;
 
-  // Toggle popup when clicking cart icon
   cartLink.addEventListener("click", async (e) => {
     e.preventDefault();
-    if (popup.style.display === "block") {
-      popup.style.display = "none";
-    } else {
-      await showCartPopup();
-    }
+    popup.style.display = popup.style.display === "block" ? "none" : "block";
+    if (popup.style.display === "block") await showCartPopup();
   });
 
-  // Close popup when clicking outside
   document.addEventListener("click", (e) => {
     if (
       popup.style.display === "block" &&
@@ -62,34 +58,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Optional close button inside popup
   let closeBtn = document.getElementById("cart-close-btn");
   if (!closeBtn) {
     closeBtn = document.createElement("button");
     closeBtn.id = "cart-close-btn";
     closeBtn.textContent = "×";
-    closeBtn.style.position = "absolute";
-    closeBtn.style.top = "0.25rem";
-    closeBtn.style.right = "0.25rem";
-    closeBtn.style.background = "transparent";
-    closeBtn.style.border = "none";
-    closeBtn.style.fontSize = "1.2rem";
-    closeBtn.style.cursor = "pointer";
-    closeBtn.addEventListener("click", () => {
-      popup.style.display = "none";
+    Object.assign(closeBtn.style, {
+      position: "absolute",
+      top: "0.25rem",
+      right: "0.25rem",
+      background: "transparent",
+      border: "none",
+      fontSize: "1.2rem",
+      cursor: "pointer",
     });
+    closeBtn.addEventListener("click", () => (popup.style.display = "none"));
     popup.appendChild(closeBtn);
   }
 
-  // Clear cart button
   const clearBtn = document.getElementById("clear-cart-btn");
   if (clearBtn) {
     clearBtn.addEventListener("click", async () => {
       if (confirm("Are you sure you want to clear your cart?")) {
-        await clearCart(); // remove all lines from the current cart
-        await createNewCart(); // start a fresh cart
-        updateCartCounter(); // update counter display
-        updateCheckoutButton(); // update checkout button
+        await clearCart();
+        await createNewCart();
+        updateCartCounter();
+        updateCheckoutButton();
       }
     });
   }
@@ -98,15 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function fetchCollections() {
   const query = `{
     collections(first: 20) {
-      edges {
-        node {
-          id
-          title
-          handle
-          description
-          image { url altText }
-        }
-      }
+      edges { node { id title handle description image { url altText } } }
     }
   }`;
   try {
@@ -135,22 +121,14 @@ async function fetchCollections() {
 async function fetchCollectionProducts(handle) {
   const query = `{
     collectionByHandle(handle: "${handle}") {
-      id
-      title
+      id title
       products(first: 50) {
         edges {
           node {
-            id
-            title
-            handle
-            description
-            priceRange { minVariantPrice { amount currencyCode } maxVariantPrice { amount currencyCode } }
+            id title handle description priceRange { minVariantPrice { amount currencyCode } maxVariantPrice { amount currencyCode } }
             images(first: 3) { edges { node { url altText } } }
             variants(first: 10) { edges { node { id title price { amount currencyCode } compareAtPrice { amount currencyCode } availableForSale selectedOptions { name value } } } }
-            tags
-            productType
-            vendor
-            availableForSale
+            tags productType vendor availableForSale
           }
         }
       }
@@ -184,7 +162,7 @@ function displayCollections(collections) {
   const container = document.getElementById("collection-tags");
   if (!container) return;
   container.innerHTML = "";
-  if (collections.length === 0) {
+  if (!collections.length) {
     container.innerHTML = '<p class="error-message">No collections found</p>';
     return;
   }
@@ -205,31 +183,29 @@ function displayCollections(collections) {
 }
 
 function addCollectionListeners() {
-  const buttons = document.querySelectorAll(".tag-selector .tag");
-  buttons.forEach((button) => {
+  document.querySelectorAll(".tag-selector .tag").forEach((button) => {
     button.addEventListener("click", async (e) => {
       e.preventDefault();
       if (button.disabled) return;
-      buttons.forEach((btn) => {
+      document.querySelectorAll(".tag-selector .tag").forEach((btn) => {
         btn.classList.remove("active");
         btn.disabled = false;
       });
       button.classList.add("active");
       button.disabled = true;
       showLoading();
-      const collectionHandle = button.dataset.collection;
       try {
-        if (collectionHandle === "all") await loadAllProducts();
+        if (button.dataset.collection === "all") await loadAllProducts();
         else {
-          const products = await fetchCollectionProducts(collectionHandle);
-          currentProducts = products;
-          displayProducts(products);
+          currentProducts = await fetchCollectionProducts(
+            button.dataset.collection
+          );
+          displayProducts(currentProducts);
         }
       } catch {
         showError("Failed to load collection");
-      } finally {
-        button.disabled = false;
       }
+      button.disabled = false;
     });
   });
 }
@@ -238,8 +214,9 @@ async function loadAllProducts() {
   const allProducts = [];
   for (const collection of allCollections) {
     try {
-      const products = await fetchCollectionProducts(collection.node.handle);
-      allProducts.push(...products);
+      allProducts.push(
+        ...(await fetchCollectionProducts(collection.node.handle))
+      );
     } catch {}
   }
   currentProducts = allProducts;
@@ -250,15 +227,16 @@ function displayProducts(products, page = 1) {
   const container = document.getElementById("products-container");
   if (!container) return;
   container.innerHTML = "";
-  if (products.length === 0) {
+  if (!products.length) {
     container.innerHTML = '<p class="no-products">No products found.</p>';
     return;
   }
   totalPages = Math.ceil(products.length / PRODUCTS_PER_PAGE);
   currentPage = page;
-  const start = (page - 1) * PRODUCTS_PER_PAGE;
-  const end = start + PRODUCTS_PER_PAGE;
-  const productsToShow = products.slice(start, end);
+  const productsToShow = products.slice(
+    (page - 1) * PRODUCTS_PER_PAGE,
+    page * PRODUCTS_PER_PAGE
+  );
   productsToShow.forEach(({ node }) => {
     const imageObj = node.images.edges[0]?.node;
     const imageUrl = imageObj?.url || placeholderImage;
@@ -291,13 +269,12 @@ function displayProducts(products, page = 1) {
       }
       <div class="product-info">
         <h3 class="product-title">${node.title}</h3>
-      <p class="product-price">${
-        node.priceRange.minVariantPrice.amount ===
-        node.priceRange.maxVariantPrice.amount
-          ? `${node.priceRange.minVariantPrice.currencyCode} $${node.priceRange.minVariantPrice.amount}`
-          : `${node.priceRange.minVariantPrice.currencyCode} $${node.priceRange.minVariantPrice.amount} - $${node.priceRange.maxVariantPrice.amount}`
-      }</p>
-
+        <p class="product-price">${
+          node.priceRange.minVariantPrice.amount ===
+          node.priceRange.maxVariantPrice.amount
+            ? `${node.priceRange.minVariantPrice.currencyCode} $${node.priceRange.minVariantPrice.amount}`
+            : `${node.priceRange.minVariantPrice.currencyCode} $${node.priceRange.minVariantPrice.amount} - $${node.priceRange.maxVariantPrice.amount}`
+        }</p>
         ${
           node.description
             ? `<p class="product-description">${truncateText(
@@ -337,23 +314,26 @@ function renderPagination(products) {
   if (!pagination) {
     pagination = document.createElement("div");
     pagination.id = "pagination";
-    pagination.style.display = "flex";
-    pagination.style.justifyContent = "center";
-    pagination.style.gap = "0.5rem";
-    pagination.style.marginTop = "2rem";
+    Object.assign(pagination.style, {
+      display: "flex",
+      justifyContent: "center",
+      gap: "0.5rem",
+      marginTop: "2rem",
+    });
     document.querySelector(".product-wrapper").appendChild(pagination);
   }
   pagination.innerHTML = "";
   for (let i = 1; i <= totalPages; i++) {
     const btn = document.createElement("button");
     btn.textContent = i;
-    btn.style.padding = "0.5rem 1rem";
-    btn.style.border = "1px solid var(--accent)";
-    btn.style.borderRadius = "0.5rem";
-    btn.style.cursor = "pointer";
-    btn.style.background =
-      i === currentPage ? "var(--accent-gradient)" : "white";
-    btn.style.color = i === currentPage ? "white" : "var(--primary)";
+    Object.assign(btn.style, {
+      padding: "0.5rem 1rem",
+      border: "1px solid var(--accent)",
+      borderRadius: "0.5rem",
+      cursor: "pointer",
+      background: i === currentPage ? "var(--accent-gradient)" : "white",
+      color: i === currentPage ? "white" : "var(--primary)",
+    });
     btn.onclick = () => displayProducts(products, i);
     pagination.appendChild(btn);
   }
@@ -535,52 +515,6 @@ async function addToCart(productId) {
     alert("Error adding to cart: " + err.message);
     addButton.disabled = false;
     addButton.textContent = "Add to Cart";
-  }
-}
-
-// ----- CLEAR CART -----
-async function clearCart() {
-  try {
-    await getOrCreateCheckout();
-
-    const query = `query getCart($cartId: ID!) { cart(id: $cartId) { lines(first: 100) { edges { node { id } } } } }`;
-    const res = await fetch(
-      `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
-        body: JSON.stringify({ query, variables: { cartId: checkoutId } }),
-      }
-    );
-    const lineIds = res.ok
-      ? (await res.json()).data?.cart?.lines?.edges?.map((e) => e.node.id) || []
-      : [];
-
-    if (lineIds.length > 0) {
-      const mutation = `mutation removeCartLines($cartId: ID!, $lineIds: [ID!]!) { cartLinesRemove(cartId: $cartId, lineIds: $lineIds) { cart { lines(first: 100) { edges { node { quantity } } } } userErrors { field message } } }`;
-      await fetch(`https://${shopDomain}/api/${API_VERSION}/graphql.json`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
-        body: JSON.stringify({
-          query: mutation,
-          variables: { cartId: checkoutId, lineIds },
-        }),
-      });
-    }
-
-    cartCount = 0;
-    updateCartCounter();
-    updateCheckoutButton();
-    document.getElementById("cart-items").innerHTML =
-      "<li>Your bag is empty.</li>";
-  } catch (err) {
-    console.error("Error clearing cart:", err);
   }
 }
 
