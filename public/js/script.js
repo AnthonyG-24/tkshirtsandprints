@@ -13,14 +13,19 @@ let cartCount = 0;
 
 async function loadConfig() {
   try {
-    const res = await fetch("config.json");
-    const data = await res.json();
-    shopDomain = data.shopDomain;
-    token = data.token;
-  } catch {
-    showCollectionError("Shopify config not loaded. Check config.json.");
+    const res = await fetch("/config.json"); // make sure the path starts with /
+    if (!res.ok) throw new Error("Could not load config.json");
+    const config = await res.json();
+
+    // Now use your config
+    console.log("Config loaded:", config);
+    return config;
+  } catch (err) {
+    console.error("Shopify config not loaded. Check config.json.", err);
   }
 }
+
+loadConfig();
 
 async function init() {
   await loadConfig();
