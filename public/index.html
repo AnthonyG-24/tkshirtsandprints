@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tkshirtsandprints</title>
+    <!--Font Awesome-->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <link rel="stylesheet" href="/public/css/root.css" />
+    <link rel="stylesheet" href="/public/css/nav.css" />
+    <link rel="stylesheet" href="/public/css/chat.css" />
+    <link rel="stylesheet" href="/public/css/shopping-bag.css" />
+    <link rel="stylesheet" href="/public/css/hero/hero.css" />
+    <link rel="stylesheet" href="/public/css/about/about.css" />
+    <link rel="stylesheet" href="/public/css/products/products.css" />
+    <link rel="stylesheet" href="/public/css/contact/contact.css" />
+    <link rel="stylesheet" href="/public/css/footer.css" />
+  </head>
+  <body>
+    <!-- <div class="background-container">
+      <div class="background-image"></div>
+      <div class="overlay"></div>
+    </div> -->
+
+    <!-- Chat/Question Feature -->
+    <div
+      class="question-chat-feature"
+      id="chatWidget"
+      tabindex="0"
+      role="button"
+    >
+      <div class="chat-header">
+        <i class="fa-solid fa-comment-dots chat-icon"></i>
+        <p class="chat-text">Question?</p>
+      </div>
+
+      <div class="chat-menu">
+        <!-- Track Order -->
+        <button class="chat-button" onclick="handleTrackOrder()">
+          <i class="fa-solid fa-truck button-icon"></i>
+          Track Order
+        </button>
+
+        <a href="#contact" class="chat-button" role="menuitem">
+          <i class="fa-solid fa-headset button-icon"></i>
+          Contact
+        </a>
+      </div>
+    </div>
+
+    <!--Navbar-->
+    <nav id="navbar">
+      <div class="nav-wrapper">
+        <div class="left-nav">
+          <img
+            class="logo-nav"
+            src="assets/tkshirtsandprints-no-bg.png"
+            alt="TKshirtsandprints logo"
+          />
+        </div>
+
+        <div class="hamburger" id="hamburger">
+          <i class="fa-solid fa-bars"></i>
+          <i class="fa-solid fa-xmark"></i>
+        </div>
+
+        <div class="nav-middle" id="navMiddle">
+          <ul>
+            <li class="nav-link"><a href="#home" class="active">Home</a></li>
+            <li class="nav-link"><a href="#about">About</a></li>
+            <li class="nav-link"><a href="#products">Products</a></li>
+            <li class="nav-link"><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+        <div id="login-modal">
+          <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h2>Login to Your Shopify Account</h2>
+            <p>Sign in or create a Shopify account to continue.</p>
+            <button
+              class="shopify-login-btn"
+              onclick="redirectToShopifyLogin()"
+            >
+              Login with Shopify
+            </button>
+          </div>
+        </div>
+
+        <div class="nav-right">
+          <!--  <i class="fa-solid fa-user" id="login-icon"></i>
+          <span class="login-text" id="login-icon-text">Login</span> -->
+          <a href="#shop" aria-label="Shopping Cart">
+            <i class="fa-solid fa-bag-shopping"></i>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <!--Hero Section-->
+    <header id="home" class="hero-section">
+      <!--  <div class="hero-underlay">
+        <img src="/assets/hero-assets/splattered-paint-removebg.png" alt="" />
+      </div> -->
+      <div class="hero-wrapper">
+        <div class="hero-left">
+          <h1>TKshirts and prints</h1>
+          <p>
+            High-quality custom apparel and prints crafted to showcase your
+            unique style. From clothing to accessories, we create designs that
+            stand out and inspire.
+          </p>
+          <a href="#about-ceo" class="header-cta">Explore</a>
+        </div>
+
+        <div class="hero-right">
+          <div class="hero-img-container">
+            <img
+              class="hero-img"
+              src="assets/tkshirtsandprints-no-bg.png"
+              alt=""
+            />
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!--About CEO-->
+    <section class="about-ceo-section">
+      <section class="about-ceo-wrapper"></section>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="about-section">
+      <div class="about-wrapper">
+        <div class="about-top">
+          <h1>Our Mission Statement</h1>
+          <p>
+            Our mission is to create high-quality apparel with unique, exquisite
+            designs—delivering value to everyone around the world. No matter
+            your size, style, or gender, we keep you in mind with every design.
+          </p>
+        </div>
+
+        <div class="about-aside">
+          <!-- Left Column: Text & Button -->
+          <aside class="about-aside-left">
+            <h2>Discover More</h2>
+            <p>
+              Browse our latest products and find something made just for you.
+            </p>
+            <button class="cta-browse-now">Browse Now</button>
+          </aside>
+
+          <!-- Right Column: Image -->
+          <aside class="about-aside-right">
+            <img
+              class="about-img"
+              src="assets/about-assets/about-img.webp"
+              alt="Customer wearing our apparel"
+              loading="lazy"
+            />
+          </aside>
+        </div>
+      </div>
+
+      <div class="wrapper">
+        <div class="item item1">
+          <img
+            class="item-img"
+            src="assets/about-assets/about-obituaries.avif"
+            alt="Photo of obituaries"
+          />
+        </div>
+        <div class="item item2">
+          <img
+            class="item-img"
+            src="assets/about-assets/about-shirtOfTheWeek.webp"
+            alt="Photo of shirt of the week"
+          />
+        </div>
+        <div class="item item3">
+          <img
+            class="item-img"
+            src="assets/about-assets/about-sublimationItems.webp"
+            alt="Photo Sublimation Item"
+          />
+        </div>
+        <div class="item item4">
+          <img
+            class="item-img"
+            src="assets/about-assets/about-familyReuinionShirt.webp"
+            alt="Photo Family reunion shirt"
+          />
+        </div>
+      </div>
+    </section>
+
+    <!--Products Section-->
+    <section id="products" class="product-section">
+      <h1>Products</h1>
+      <div class="product-wrapper">
+        <div class="tag-selector" id="collection-tags">
+          <div class="loading">Loading collections...</div>
+        </div>
+        <div class="products-container" id="products-container">
+          <div class="loading">Select a collection to view products</div>
+        </div>
+      </div>
+      <!-- <button class="follow-store-btn" id="follow-store-btn">
+        Follow On Shop
+      </button> -->
+
+      <!--  <div
+        id="gs-builder-btn"
+        data-shop="tk-shirts-and-prints.myshopify.com"
+        data-type="gang-sheet"
+        data-domain="www.tkshirtsandprints.com"
+        data-gs-event="click"
+      >
+        Build your own Gang Sheet
+      </div> -->
+    </section>
+
+    <!--Shopping bag-->
+    <div id="cart-popup">
+      <h3>Your Bag</h3>
+      <a id="checkout-btn" href="#" target="_blank">Go to Checkout</a>
+      <button id="clear-cart-btn">Clear Cart</button>
+      <ul id="cart-items"></ul>
+    </div>
+
+    <!-- Form/Contact Section -->
+    <section id="contact" class="contact-section">
+      <div class="contact-content">
+        <!-- Left Side: Contact Form -->
+        <div class="form-left-side">
+          <h2 class="section-title">Get in Touch</h2>
+          <p class="section-subtitle">
+            👋 Hi, message us with any questions. We're happy to help!
+          </p>
+
+          <div class="success-message" id="successMessage">
+            Thank you! Your message has been sent successfully.
+          </div>
+
+          <form class="contact-form" id="contactForm">
+            <div class="form-group">
+              <label for="name" class="form-label">Name</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                class="form-input"
+                placeholder="Your Name"
+                autocomplete="name"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="email" class="form-label">Email Address</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                class="form-input"
+                placeholder="you@example.com"
+                autocomplete="email"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="message" class="form-label">Message</label>
+              <textarea
+                id="message"
+                name="message"
+                class="form-input form-textarea"
+                placeholder="Tell us how we can help..."
+                required
+                minlength="10"
+              ></textarea>
+            </div>
+            <button type="submit" class="submit-btn">Send Message</button>
+          </form>
+        </div>
+
+        <!-- Right Side: Contact Info -->
+        <div class="contact-right-side">
+          <h2 class="contact-info-title">Contact Information</h2>
+          <div class="contact-methods">
+            <div class="contact-item">
+              <i class="fa-solid fa-envelope"></i>
+              <div class="contact-details">
+                <h3>Email</h3>
+                <p>
+                  <a href="mailto:tandktshirtsandprints@gmail.com"
+                    >tandktshirtsandprints@gmail.com</a
+                  >
+                </p>
+              </div>
+            </div>
+
+            <div class="contact-item">
+              <i class="fa-brands fa-facebook"></i>
+              <div class="contact-details">
+                <h3>Facebook</h3>
+                <p><a href="#">https://www.facebook.com/Bennyyoung1002</a></p>
+              </div>
+            </div>
+
+            <div class="contact-item">
+              <i class="fa-brands fa-github"></i>
+              <div class="contact-details">
+                <h3>GitHub</h3>
+                <p>
+                  <a
+                    href="https://github.com/AnthonyG-24"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >AnthonyG-24</a
+                  >
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!--Footer-->
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-column">
+          <h3>Quick Links</h3>
+          <ul class="footer-links">
+            <li class="nav-link"><a href="#home">Home</a></li>
+            <li class="nav-link"><a href="#about">About</a></li>
+            <li class="nav-link"><a href="#products">Products</a></li>
+            <li class="nav-link"><a href="#contact">Contact</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-column">
+          <h3>Contact</h3>
+          <div>
+            <strong>Email:</strong>
+            <p>tandktshirtsandprints@gmail.com</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2025 <span id="year"></span> TK Shirts and Prints.</p>
+      </div>
+      <div class="extra-links">
+        <a href="#" data-content-id="tos" data-popup="Terms of Service"
+          >Terms of Service</a
+        >
+        <a href="#" data-content-id="privacy" data-popup="Privacy Policy"
+          >Privacy Policy</a
+        >
+        <a href="#" data-content-id="shipping" data-popup="Shipping Policy"
+          >Shipping Policy</a
+        >
+        <a href="#" data-content-id="refund" data-popup="Refund Policy"
+          >Refund Policy</a
+        >
+      </div>
+    </footer>
+    <div id="popup-modal" class="popup-modal">
+      <div class="popup-content">
+        <span class="close-popup">&times;</span>
+        <h2 id="popup-title"></h2>
+        <div id="popup-text" class="popup-scrollable"></div>
+      </div>
+    </div>
+    <div id="tos" style="display: none">
+      <p>
+        <strong>OVERVIEW</strong><br />
+        This website is operated by TK Shirts and Prints. Throughout the site,
+        the terms “we”, “us” and “our” refer to TK Shirts and Prints. TK Shirts
+        and Prints offers this website, including all information, tools and
+        Services available from this site to you, the user, conditioned upon
+        your acceptance of all terms, conditions, policies and notices stated
+        here.<br /><br />
+
+        By visiting our site and/or purchasing something from us, you engage in
+        our “Service” and agree to be bound by the following terms and
+        conditions (“Terms of Service”, “Terms”), including those additional
+        terms and conditions and policies referenced herein and/or available by
+        hyperlink. These Terms of Service apply to all users of the site,
+        including without limitation users who are browsers, vendors, customers,
+        merchants, and/or contributors of content.<br /><br />
+
+        Please read these Terms of Service carefully before accessing or using
+        our website. By accessing or using any part of the site, you agree to be
+        bound by these Terms of Service. If you do not agree to all the terms
+        and conditions of this agreement, then you may not access the website or
+        use any Services. If these Terms of Service are considered an offer,
+        acceptance is expressly limited to these Terms of Service.<br /><br />
+
+        Any new features or tools which are added to the current store shall
+        also be subject to the Terms of Service. You can review the most current
+        version of the Terms of Service at any time on this page. We reserve the
+        right to update, change or replace any part of these Terms of Service by
+        posting updates and/or changes to our website. It is your responsibility
+        to check this page periodically for changes. Your continued use of or
+        access to the website following the posting of any changes constitutes
+        acceptance of those changes.<br /><br />
+
+        Our store is hosted on Shopify Inc. They provide us with the online
+        e-commerce platform that allows us to sell our products and Services to
+        you.<br /><br />
+
+        <strong>SECTION 1 - ONLINE STORE TERMS</strong><br />
+        By agreeing to these Terms of Service, you represent that you are at
+        least the age of majority in your state or province of residence, or
+        that you are the age of majority in your state or province of residence
+        and you have given us your consent to allow any of your minor dependents
+        to use this site. You may not use our products for any illegal or
+        unauthorized purpose nor may you, in the use of the Service, violate any
+        laws in your jurisdiction (including but not limited to copyright laws).
+        You must not transmit any worms or viruses or any code of a destructive
+        nature. A breach or violation of any of the Terms will result in an
+        immediate termination of your Services.<br /><br />
+
+        <strong>SECTION 2 - GENERAL CONDITIONS</strong><br />
+        We reserve the right to refuse Service to anyone for any reason at any
+        time. You understand that your content (not including credit card
+        information), may be transferred unencrypted and involve (a)
+        transmissions over various networks; and (b) changes to conform and
+        adapt to technical requirements of connecting networks or devices.
+        Credit card information is always encrypted during transfer over
+        networks. You agree not to reproduce, duplicate, copy, sell, resell or
+        exploit any portion of the Service, use of the Service, or access to the
+        Service or any contact on the website through which the Service is
+        provided, without express written permission by us. The headings used in
+        this agreement are included for convenience only and will not limit or
+        otherwise affect these Terms.<br /><br />
+
+        <strong
+          >SECTION 3 - ACCURACY, COMPLETENESS AND TIMELINESS OF
+          INFORMATION</strong
+        ><br />
+        We are not responsible if information made available on this site is not
+        accurate, complete or current. The material on this site is provided for
+        general information only and should not be relied upon or used as the
+        sole basis for making decisions without consulting primary, more
+        accurate, more complete or more timely sources of information. Any
+        reliance on the material on this site is at your own risk. This site may
+        contain certain historical information. Historical information,
+        necessarily, is not current and is provided for your reference only. We
+        reserve the right to modify the contents of this site at any time, but
+        we have no obligation to update any information on our site. You agree
+        that it is your responsibility to monitor changes to our site.<br /><br />
+
+        <strong>SECTION 4 - MODIFICATIONS TO THE SERVICE AND PRICES</strong
+        ><br />
+        Prices for our products are subject to change without notice. We reserve
+        the right at any time to modify or discontinue the Service (or any part
+        or content thereof) without notice at any time. We shall not be liable
+        to you or to any third-party for any modification, price change,
+        suspension or discontinuance of the Service.<br /><br />
+
+        <strong>SECTION 5 - PRODUCTS OR SERVICES (if applicable)</strong><br />
+        Certain products or Services may be available exclusively online through
+        the website. These products or Services may have limited quantities and
+        are subject to return or exchange only according to our Refund Policy.
+        We have made every effort to display as accurately as possible the
+        colors and images of our products that appear at the store. We cannot
+        guarantee that your computer monitor's display of any color will be
+        accurate. We reserve the right, but are not obligated, to limit the
+        sales of our products or Services to any person, geographic region or
+        jurisdiction. We may exercise this right on a case-by-case basis. We
+        reserve the right to limit the quantities of any products or Services
+        that we offer. All descriptions of products or product pricing are
+        subject to change at anytime without notice, at the sole discretion of
+        us. We reserve the right to discontinue any product at any time. Any
+        offer for any product or Service made on this site is void where
+        prohibited. We do not warrant that the quality of any products,
+        Services, information, or other material purchased or obtained by you
+        will meet your expectations, or that any errors in the Service will be
+        corrected.<br /><br />
+
+        <strong>SECTION 6 - ACCURACY OF BILLING AND ACCOUNT INFORMATION</strong
+        ><br />
+        We reserve the right to refuse any order you place with us. We may, in
+        our sole discretion, limit or cancel quantities purchased per person,
+        per household or per order. These restrictions may include orders placed
+        by or under the same customer account, the same credit card, and/or
+        orders that use the same billing and/or shipping address. In the event
+        that we make a change to or cancel an order, we may attempt to notify
+        you by contacting the e‑mail and/or billing address/phone number
+        provided at the time the order was made. We reserve the right to limit
+        or prohibit orders that, in our sole judgment, appear to be placed by
+        dealers, resellers or distributors.<br /><br />
+
+        You agree to provide current, complete and accurate purchase and account
+        information for all purchases made at our store. You agree to promptly
+        update your account and other information, including your email address
+        and credit card numbers and expiration dates, so that we can complete
+        your transactions and contact you as needed.<br /><br />
+
+        For more details, please review our Refund Policy.<br /><br />
+
+        <strong>SECTION 7 - OPTIONAL TOOLS</strong><br />
+        We may provide you with access to third-party tools over which we
+        neither monitor nor have any control nor input. You acknowledge and
+        agree that we provide access to such tools ”as is” and “as available”
+        without any warranties, representations or conditions of any kind and
+        without any endorsement. We shall have no liability whatsoever arising
+        from or relating to your use of optional third-party tools. Any use by
+        you of the optional tools offered through the site is entirely at your
+        own risk and discretion and you should ensure that you are familiar with
+        and approve of the terms on which tools are provided by the relevant
+        third-party provider(s). We may also, in the future, offer new Services
+        and/or features through the website (including the release of new tools
+        and resources). Such new features and/or Services shall also be subject
+        to these Terms of Service.<br /><br />
+
+        <strong>SECTION 8 - THIRD-PARTY LINKS</strong><br />
+        Certain content, products and Services available via our Service may
+        include materials from third-parties. Third-party links on this site may
+        direct you to third-party websites that are not affiliated with us. We
+        are not responsible for examining or evaluating the content or accuracy
+        and we do not warrant and will not have any liability or responsibility
+        for any third-party materials or websites, or for any other materials,
+        products, or Services of third-parties. We are not liable for any harm
+        or damages related to the purchase or use of goods, Services, resources,
+        content, or any other transactions made in connection with any
+        third-party websites. Please review carefully the third-party's policies
+        and practices and make sure you understand them before you engage in any
+        transaction. Complaints, claims, concerns, or questions regarding
+        third-party products should be directed to the third-party.<br /><br />
+
+        <strong
+          >SECTION 9 - USER COMMENTS, FEEDBACK AND OTHER SUBMISSIONS</strong
+        ><br />
+        If, at our request, you send certain specific submissions (for example
+        contest entries) or without a request from us, you send creative ideas,
+        suggestions, proposals, plans, or other materials, whether online, by
+        email, by postal mail, or otherwise (collectively, 'comments'), you
+        agree that we may, at any time, without restriction, edit, copy,
+        publish, distribute, translate and otherwise use in any medium any
+        comments that you forward to us. We are and shall be under no obligation
+        (1) to maintain any comments in confidence; (2) to pay compensation for
+        any comments; or (3) to respond to any comments.
+      </p>
+
+      <strong>SECTION 10 - PERSONAL INFORMATION</strong>
+      <p>
+        Your submission of personal information through the store is governed by
+        our Privacy Policy, which can be viewed here:
+        <a href="[LINK TO PRIVACY POLICY]" target="_blank">Privacy Policy</a>
+      </p>
+
+      <strong>SECTION 11 - ERRORS, INACCURACIES AND OMISSIONS</strong>
+      <p>
+        Occasionally there may be information on our site or in the Service that
+        contains typographical errors, inaccuracies or omissions that may relate
+        to product descriptions, pricing, promotions, offers, product shipping
+        charges, transit times and availability. We reserve the right to correct
+        any errors, inaccuracies or omissions, and to change or update
+        information or cancel orders if any information in the Service or on any
+        related website is inaccurate at any time without prior notice
+        (including after you have submitted your order).
+      </p>
+      <p>
+        We undertake no obligation to update, amend or clarify information in
+        the Service or on any related website, including without limitation,
+        pricing information, except as required by law. No specified update or
+        refresh date applied in the Service or on any related website should be
+        taken to indicate that all information in the Service or on any related
+        website has been modified or updated.
+      </p>
+
+      <strong>SECTION 12 - PROHIBITED USES</strong>
+      <p>
+        In addition to other prohibitions as set forth in the Terms of Service,
+        you are prohibited from using the site or its content:
+      </p>
+      <ul>
+        <li>(a) for any unlawful purpose;</li>
+        <li>
+          (b) to solicit others to perform or participate in any unlawful acts;
+        </li>
+        <li>
+          (c) to violate any international, federal, provincial or state
+          regulations, rules, laws, or local ordinances;
+        </li>
+        <li>
+          (d) to infringe upon or violate our intellectual property rights or
+          the intellectual property rights of others;
+        </li>
+        <li>
+          (e) to harass, abuse, insult, harm, defame, slander, disparage,
+          intimidate, or discriminate based on gender, sexual orientation,
+          religion, ethnicity, race, age, national origin, or disability;
+        </li>
+        <li>(f) to submit false or misleading information;</li>
+        <li>
+          (g) to upload or transmit viruses or any other type of malicious code
+          that will or may be used in any way that will affect the functionality
+          or operation of the Service or any related website, other websites, or
+          the Internet;
+        </li>
+        <li>(h) to collect or track the personal information of others;</li>
+        <li>(i) to spam, phish, pharm, pretext, spider, crawl, or scrape;</li>
+        <li>(j) for any obscene or immoral purpose; or</li>
+        <li>
+          (k) to interfere with or circumvent the security features of the
+          Service or any related website, other websites, or the Internet.
+        </li>
+      </ul>
+      <p>
+        We reserve the right to terminate your use of the Service or any related
+        website for violating any of the prohibited uses.
+      </p>
+
+      <strong
+        >SECTION 13 - DISCLAIMER OF WARRANTIES; LIMITATION OF LIABILITY</strong
+      >
+      <p>
+        We do not guarantee, represent or warrant that your use of our Service
+        will be uninterrupted, timely, secure or error-free.
+      </p>
+      <p>
+        We do not warrant that the results that may be obtained from the use of
+        the Service will be accurate or reliable.
+      </p>
+      <p>
+        You agree that from time to time we may remove the Service for
+        indefinite periods of time or cancel the Service at any time, without
+        notice to you.
+      </p>
+      <p>
+        You expressly agree that your use of, or inability to use, the Service
+        is at your sole risk. The Service and all products and Services
+        delivered to you through the Service are (except as expressly stated by
+        us) provided "as is" and "as available" for your use, without any
+        representation, warranties or conditions of any kind, either express or
+        implied, including all implied warranties or conditions of
+        merchantability, merchantable quality, fitness for a particular purpose,
+        durability, title, and non-infringement.
+      </p>
+      <p>
+        In no case shall TK Shirts and Prints, our directors, officers,
+        employees, affiliates, agents, contractors, interns, suppliers, Service
+        providers or licensors be liable for any injury, loss, claim, or any
+        direct, indirect, incidental, punitive, special, or consequential
+        damages of any kind, including, without limitation lost profits, lost
+        revenue, lost savings, loss of data, replacement costs, or any similar
+        damages, whether based in contract, tort (including negligence), strict
+        liability or otherwise, arising from your use of any of the Service or
+        any products procured using the Service, or for any other claim related
+        in any way to your use of the Service or any product, including, but not
+        limited to, any errors or omissions in any content, or any loss or
+        damage of any kind incurred as a result of the use of the Service or any
+        content (or product) posted, transmitted, or otherwise made available
+        via the Service, even if advised of their possibility.
+      </p>
+
+      <strong>SECTION 14 - INDEMNIFICATION</strong>
+      <p>
+        You agree to indemnify, defend and hold harmless TK Shirts and Prints
+        and our parent, subsidiaries, affiliates, partners, officers, directors,
+        agents, contractors, licensors, Service providers, subcontractors,
+        suppliers, interns and employees, harmless from any claim or demand,
+        including reasonable attorneys’ fees, made by any third-party due to or
+        arising out of your breach of these Terms of Service or the documents
+        they incorporate by reference, or your violation of any law or the
+        rights of a third-party.
+      </p>
+
+      <strong>SECTION 15 - SEVERABILITY</strong>
+      <p>
+        In the event that any provision of these Terms of Service is determined
+        to be unlawful, void or unenforceable, such provision shall nonetheless
+        be enforceable to the fullest extent permitted by applicable law, and
+        the unenforceable portion shall be deemed to be severed from these Terms
+        of Service, such determination shall not affect the validity and
+        enforceability of any other remaining provisions.
+      </p>
+
+      <strong>SECTION 16 - TERMINATION</strong>
+      <p>
+        The obligations and liabilities of the parties incurred prior to the
+        termination date shall survive the termination of this agreement for all
+        purposes.
+      </p>
+      <p>
+        These Terms of Service are effective unless and until terminated by
+        either you or us. You may terminate these Terms of Service at any time
+        by notifying us that you no longer wish to use our Services, or when you
+        cease using our site.
+      </p>
+      <p>
+        If in our sole judgment you fail, or we suspect that you have failed, to
+        comply with any term or provision of these Terms of Service, we also may
+        terminate this agreement at any time without notice and you will remain
+        liable for all amounts due up to and including the date of termination;
+        and/or accordingly may deny you access to our Services (or any part
+        thereof).
+      </p>
+
+      <strong>SECTION 17 - ENTIRE AGREEMENT</strong>
+      <p>
+        The failure of us to exercise or enforce any right or provision of these
+        Terms of Service shall not constitute a waiver of such right or
+        provision.
+      </p>
+      <p>
+        These Terms of Service and any policies or operating rules posted by us
+        on this site or in respect to the Service constitutes the entire
+        agreement and understanding between you and us and governs your use of
+        the Service, superseding any prior or contemporaneous agreements,
+        communications and proposals, whether oral or written, between you and
+        us (including, but not limited to, any prior versions of the Terms of
+        Service).
+      </p>
+      <p>
+        Any ambiguities in the interpretation of these Terms of Service shall
+        not be construed against the drafting party.
+      </p>
+
+      <strong>SECTION 18 - GOVERNING LAW</strong>
+      <p>
+        These Terms of Service and any separate agreements whereby we provide
+        you Services shall be governed by and construed in accordance with the
+        laws of United States.
+      </p>
+
+      <strong>SECTION 19 - CHANGES TO TERMS OF SERVICE</strong>
+      <p>
+        You can review the most current version of the Terms of Service at any
+        time at this page.
+      </p>
+      <p>
+        We reserve the right, at our sole discretion, to update, change or
+        replace any part of these Terms of Service by posting updates and
+        changes to our website. It is your responsibility to check our website
+        periodically for changes. Your continued use of or access to our website
+        or the Service following the posting of any changes to these Terms of
+        Service constitutes acceptance of those changes.
+      </p>
+
+      <strong>SECTION 20 - CONTACT INFORMATION</strong>
+      <p>
+        Questions about the Terms of Service should be sent to us at
+        <a href="mailto:sales@tkshirtsandprints.com"
+          >sales@tkshirtsandprints.com</a
+        >.
+      </p>
+      <p>Our contact information is posted below:</p>
+      <p>T&K T-Shirts & Prints</p>
+      <p>
+        4304 Chuck Hollow Lane, Charlotte North Carolina 28277, United States
+      </p>
+      <p>(704) 928-7803</p>
+    </div>
+    <div id="privacy" style="display: none">
+      <p><strong>Last updated: July 08, 2023</strong></p>
+
+      <p>
+        This Privacy Policy describes how TK Shirts and Prints (the "Site",
+        "we", "us", or "our") collects, uses, and discloses your personal
+        information when you visit, use our services, or make a purchase from
+        www.tkshirtsandprints.com (the "Site") or otherwise communicate with us
+        (collectively, the "Services"). For purposes of this Privacy Policy,
+        "you" and "your" means you as the user of the Services, whether you are
+        a customer, website visitor, or another individual whose information we
+        have collected pursuant to this Privacy Policy.
+      </p>
+
+      <p>
+        Please read this Privacy Policy carefully. By using and accessing any of
+        the Services, you agree to the collection, use, and disclosure of your
+        information as described in this Privacy Policy. If you do not agree to
+        this Privacy Policy, please do not use or access any of the Services.
+      </p>
+
+      <p><strong>Changes to This Privacy Policy</strong></p>
+      <p>
+        We may update this Privacy Policy from time to time, including to
+        reflect changes to our practices or for other operational, legal, or
+        regulatory reasons. We will post the revised Privacy Policy on the Site,
+        update the "Last updated" date and take any other steps required by
+        applicable law.
+      </p>
+
+      <p><strong>How We Collect and Use Your Personal Information</strong></p>
+      <p>
+        To provide the Services, we collect and have collected over the past 12
+        months personal information about you from a variety of sources, as set
+        out below. The information that we collect and use varies depending on
+        how you interact with us.
+      </p>
+      <p>
+        In addition to the specific uses set out below, we may use information
+        we collect about you to communicate with you, provide the Services,
+        comply with any applicable legal obligations, enforce any applicable
+        terms of service, and to protect or defend the Services, our rights, and
+        the rights of our users or others.
+      </p>
+
+      <p><strong>What Personal Information We Collect</strong></p>
+      <p>
+        The types of personal information we obtain about you depends on how you
+        interact with our Site and use our Services. When we use the term
+        "personal information", we are referring to information that identifies,
+        relates to, describes or can be associated with you. The following
+        sections describe the categories and specific types of personal
+        information we collect.
+      </p>
+
+      <p><strong>Information We Collect Directly from You</strong></p>
+      <p>
+        Information that you directly submit to us through our Services may
+        include:
+      </p>
+      <ul>
+        <li>
+          Basic contact details including your name, address, phone number,
+          email.
+        </li>
+        <li>
+          Order information including your name, billing address, shipping
+          address, payment confirmation, email address, phone number.
+        </li>
+        <li>
+          Account information including your username, password, security
+          questions.
+        </li>
+        <li>
+          Shopping information including the items you view, put in your cart or
+          add to your wishlist.
+        </li>
+        <li>
+          Customer support information including the information you choose to
+          include in communications with us, for example, when sending a message
+          through the Services.
+        </li>
+      </ul>
+      <p>
+        Some features of the Services may require you to directly provide us
+        with certain information about yourself. You may elect not to provide
+        this information, but doing so may prevent you from using or accessing
+        these features.
+      </p>
+
+      <p><strong>Information We Collect through Cookies</strong></p>
+      <p>
+        We also automatically collect certain information about your interaction
+        with the Services ("Usage Data"). To do this, we may use cookies, pixels
+        and similar technologies ("Cookies"). Usage Data may include information
+        about how you access and use our Site and your account, including device
+        information, browser information, information about your network
+        connection, your IP address and other information regarding your
+        interaction with the Services.
+      </p>
+
+      <p><strong>Information We Obtain from Third Parties</strong></p>
+      <p>
+        Finally, we may obtain information about you from third parties,
+        including from vendors and service providers who may collect information
+        on our behalf, such as:
+      </p>
+      <ul>
+        <li>Companies who support our Site and Services, such as Shopify.</li>
+        <li>
+          Our payment processors, who collect payment information (e.g., bank
+          account, credit or debit card information, billing address) to process
+          your payment in order to fulfill your orders and provide you with
+          products or services you have requested, in order to perform our
+          contract with you.
+        </li>
+        <li>
+          When you visit our Site, open or click on emails we send you, or
+          interact with our Services or advertisements, we, or third parties we
+          work with, may automatically collect certain information using online
+          tracking technologies such as pixels, web beacons, software developer
+          kits, third-party libraries, and cookies.
+        </li>
+      </ul>
+      <p>
+        Any information we obtain from third parties will be treated in
+        accordance with this Privacy Policy. We are not responsible or liable
+        for the accuracy of the information provided to us by third parties and
+        are not responsible for any third party's policies or practices. For
+        more information, see the section below, Third Party Websites and Links.
+      </p>
+
+      <p><strong>How We Use Your Personal Information</strong></p>
+      <ul>
+        <li>
+          <strong>Providing Products and Services:</strong> We use your personal
+          information to provide you with the Services in order to perform our
+          contract with you, including to process your payments, fulfill your
+          orders, to send notifications to you related to your account,
+          purchases, returns, exchanges or other transactions, to create,
+          maintain and otherwise manage your account, to arrange for shipping,
+          facilitate any returns and exchanges and to enable you to post
+          reviews.
+        </li>
+        <li>
+          <strong>Marketing and Advertising:</strong> We use your personal
+          information for marketing and promotional purposes, such as to send
+          marketing, advertising and promotional communications by email, text
+          message or postal mail, and to show you advertisements for products or
+          services. This may include using your personal information to better
+          tailor the Services and advertising on our Site and other websites.
+        </li>
+        <li>
+          <strong>Security and Fraud Prevention:</strong> We use your personal
+          information to detect, investigate or take action regarding possible
+          fraudulent, illegal or malicious activity. If you choose to use the
+          Services and register an account, you are responsible for keeping your
+          account credentials safe. We highly recommend that you do not share
+          your username, password, or other access details with anyone else. If
+          you believe your account has been compromised, please contact us
+          immediately.
+        </li>
+        <li>
+          <strong>Communicating with you:</strong> We use your personal
+          information to provide you with customer support and improve our
+          Services. This is in our legitimate interests in order to be
+          responsive to you, to provide effective services to you, and to
+          maintain our business relationship with you.
+        </li>
+      </ul>
+
+      <p><strong>Cookies</strong></p>
+      <p>
+        Like many websites, we use Cookies on our Site. For specific information
+        about the Cookies that we use related to powering our store with
+        Shopify, see
+        <a
+          href="https://www.shopify.com/legal/cookies"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Shopify Cookies</a
+        >
+      </p>
+
+      <p><strong>How We Disclose Personal Information</strong></p>
+      <p>
+        In certain circumstances, we may disclose your personal information to
+        third parties for legitimate purposes subject to this Privacy Policy.
+        Such circumstances may include:
+      </p>
+      <ul>
+        <li>
+          With vendors or other third parties who perform services on our behalf
+          (e.g., IT management, payment processing, data analytics, customer
+          support, cloud storage, fulfillment and shipping).
+        </li>
+        <li>
+          With business and marketing partners, including Shopify, to provide
+          services and advertise to you. Our business and marketing partners
+          will use your information in accordance with their own privacy
+          notices.
+        </li>
+        <li>
+          When you direct, request us or otherwise consent to our disclosure of
+          certain information to third parties, such as to ship you products or
+          through your use of social media widgets or login integrations, with
+          your consent.
+        </li>
+        <li>
+          With our affiliates or otherwise within our corporate group, in our
+          legitimate interests to run a successful business.
+        </li>
+        <li>
+          In connection with a business transaction such as a merger or
+          bankruptcy, to comply with any applicable legal obligations (including
+          to respond to subpoenas, search warrants and similar requests), to
+          enforce any applicable terms of service, and to protect or defend the
+          Services, our rights, and the rights of our users or others.
+        </li>
+      </ul>
+
+      <p><strong>Contact</strong></p>
+      <p>
+        If you have any questions about this Privacy Policy, please call (704)
+        928-7803 or email us at
+        <a href="mailto:sales@tkshirtsandprints.com"
+          >sales@tkshirtsandprints.com</a
+        >. Our mailing address is T&K T-Shirts & Prints, 4304 Chuck Hollow Lane,
+        Charlotte NC 28277, United States.
+      </p>
+    </div>
+    <div id="shipping" style="display: none">
+      <p><strong>Shipping Policy</strong></p>
+      <p>Please allow 3-5 business days for shipping.</p>
+    </div>
+    <div id="refund" style="display: none">
+      <p><strong>Refund / Return Policy</strong></p>
+
+      <p><strong>No Refund on Custom Items!</strong></p>
+      <p>
+        Once a mock up has been approved, your item will be moved to production.
+      </p>
+
+      <p>
+        We have a 30-day return policy, which means you have 30 days after
+        receiving your item to request a return (excludes custom work).
+      </p>
+
+      <p>
+        To be eligible for a return, your item must be in the same condition
+        that you received it, unworn or unused, with tags, and in its original
+        packaging. You’ll also need the receipt or proof of purchase.
+      </p>
+
+      <p>
+        To start a return, you can contact us at
+        <a href="mailto:tandktshirtsandprints@gmail.com"
+          >tandktshirtsandprints@gmail.com</a
+        >.
+      </p>
+
+      <p>
+        If your return is accepted, we’ll send you a return shipping label, as
+        well as instructions on how and where to send your package. Items sent
+        back to us without first requesting a return will not be accepted.
+      </p>
+
+      <p>
+        You can always contact us for any return question at
+        <a href="mailto:tandktshirtsandprints@gmail.com"
+          >tandktshirtsandprints@gmail.com</a
+        >.
+      </p>
+
+      <p><strong>Damages and Issues</strong></p>
+      <p>
+        Please inspect your order upon reception and contact us immediately if
+        the item is defective, damaged, or if you receive the wrong item, so
+        that we can evaluate the issue and make it right.
+      </p>
+
+      <p><strong>Exceptions / Non-returnable Items</strong></p>
+      <p>
+        Certain types of items cannot be returned, like perishable goods (such
+        as food, flowers, or plants), custom products (such as special orders or
+        personalized items), and personal care goods (such as beauty products).
+        We also do not accept returns for hazardous materials, flammable
+        liquids, or gases. Please get in touch if you have questions or concerns
+        about your specific item.
+      </p>
+      <p>
+        Unfortunately, we cannot accept returns on sale items or gift cards.
+      </p>
+
+      <p><strong>Exchanges</strong></p>
+      <p>
+        The fastest way to ensure you get what you want is to return the item
+        you have, and once the return is accepted, make a separate purchase for
+        the new item.
+      </p>
+
+      <p><strong>European Union 14-Day Cooling Off Period</strong></p>
+      <p>
+        Notwithstanding the above, if the merchandise is being shipped into the
+        European Union, you have the right to cancel or return your order within
+        14 days, for any reason and without a justification. As above, your item
+        must be in the same condition that you received it, unworn or unused,
+        with tags, and in its original packaging. You’ll also need the receipt
+        or proof of purchase.
+      </p>
+
+      <p><strong>Refunds</strong></p>
+      <p>
+        We will notify you once we’ve received and inspected your return, and
+        let you know if the refund was approved or not. If approved, you’ll be
+        automatically refunded on your original payment method within 10
+        business days. Please remember it can take some time for your bank or
+        credit card company to process and post the refund too.
+      </p>
+      <p>
+        If more than 15 business days have passed since we’ve approved your
+        return, please contact us at
+        <a href="mailto:tandktshirtsandprints@gmail.com"
+          >tandktshirtsandprints@gmail.com</a
+        >.
+      </p>
+    </div>
+
+    <script src="js/nav.js"></script>
+    <script src="js/bags.js"></script>
+    <!--     <script src="js/login.js"></script>
+ -->
+    <script src="js/chat.js"></script>
+    <script src="js/popup.js"></script>
+    <script src="js/script.js"></script>
+  </body>
+</html>
