@@ -42,11 +42,14 @@ async function init() {
 }
 
 //Shopify API code below
+// ----- UPLOAD HANDLER -----
 document.querySelectorAll(".upload-input").forEach((input) => {
   input.addEventListener("change", async () => {
     const file = input.files[0];
     if (!file) return;
     const url = await uploadToCloudinary(file);
+    if (!url) return;
+
     let preview = input.parentElement.querySelector("img");
     if (!preview) {
       preview = document.createElement("img");
@@ -117,27 +120,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function uploadToCloudinary(file) {
-  if (!file) return null;
-
-  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
-
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
 
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.ok) throw new Error("Cloudinary upload failed");
-
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+      { method: "POST", body: formData }
+    );
+    if (!res.ok) throw new Error("Upload failed");
     const data = await res.json();
     return data.secure_url;
   } catch (err) {
     console.error("Cloudinary error:", err);
-    alert("Failed to upload your file. Please try again.");
+    alert("Failed to upload file");
     return null;
   }
 }
@@ -552,213 +549,62 @@ async function createNewCart() {
 
 // ----- ADD TO CART (WITH DEBUGGING) -----
 async function addToCart(productId) {
-  console.log("🛒 addToCart() called for product:", productId);
-
   const variantSelect = document.getElementById(`variants-${productId}`);
   const selectedVariantId = variantSelect?.value;
-  if (!selectedVariantId) {
-    console.log("❌ No variant selected");
-    return alert("Please select a variant");
-  }
+  if (!selectedVariantId) return alert("Please select a variant");
 
-  // Check if this item (with photo) is already in cart
   const fileInput = document.getElementById(`upload-${productId}`);
-  const file = fileInput?.files[0];
+  let fileUrl = fileInput?.files[0]
+    ? await uploadToCloudinary(fileInput.files[0])
+    : null;
 
-  if (file && cartItems.has(productId)) {
-    alert(
-      "This item is already in your cart with a custom design. Please remove it first if you want to add a different design."
-    );
-    return;
+  const attributes = [];
+  if (fileUrl) attributes.push({ key: "Uploaded File", value: fileUrl });
+
+  const gangSizeSelect = document.getElementById(`gang-size-${productId}`);
+  if (gangSizeSelect) {
+    const [size, price] = gangSizeSelect.value.split("|");
+    attributes.push({ key: "Gang Sheet", value: `${size} (${price})` });
   }
 
-  console.log("✅ Selected variant:", selectedVariantId);
-
-  const addButton = variantSelect
-    .closest(".product-info")
-    .querySelector(".add-to-cart-btn");
-  addButton.disabled = true;
-  addButton.textContent = "Adding...";
-
-  try {
-    await getOrCreateCheckout();
-    console.log("✅ Cart ready. Cart ID:", checkoutId);
-
-    // Handle file upload
-    let fileUrl = "";
-
-    if (file) {
-      console.log("📎 File selected for upload:", file.name);
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await res.json();
-      fileUrl = data.secure_url;
-      console.log("✅ File uploaded:", fileUrl);
-
-      if (fileUrl) {
-        let existingPreview = fileInput.parentElement.querySelector("img");
-        if (!existingPreview) {
-          const preview = document.createElement("img");
-          preview.src = fileUrl;
-          preview.style.maxWidth = "80px";
-          preview.style.marginTop = "5px";
-          fileInput.parentElement.appendChild(preview);
-        } else {
-          existingPreview.src = fileUrl;
-        }
+  const mutation = `
+    mutation addCartLines($cartId: ID!, $lines: [CartLineInput!]!) {
+      cartLinesAdd(cartId: $cartId, lines: $lines) {
+        cart { id checkoutUrl lines(first:100) { edges { node { id quantity attributes { key value } merchandise { ... on ProductVariant { id title image { url altText } product { id title } } } } } } }
+        userErrors { field message }
       }
+    }`;
+
+  const variables = {
+    cartId: checkoutId,
+    lines: [{ merchandiseId: selectedVariantId, quantity: 1, attributes }],
+  };
+
+  const res = await fetch(
+    `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Storefront-Access-Token": token,
+      },
+      body: JSON.stringify({ query: mutation, variables }),
     }
+  );
 
-    // Prepare attributes array
-    const attributes = [];
-    if (fileUrl) {
-      attributes.push({ key: "Uploaded File", value: fileUrl });
-      console.log("📎 Added file attribute:", fileUrl);
-    }
+  const result = await res.json();
+  if (result.data.cartLinesAdd.userErrors.length)
+    return alert(result.data.cartLinesAdd.userErrors[0].message);
 
-    const gangSizeSelect = document.getElementById(`gang-size-${productId}`);
-    if (gangSizeSelect) {
-      const [size, price] = gangSizeSelect.value.split("|");
-      attributes.push({ key: "Gang Sheet", value: `${size} (${price})` });
-      console.log("📏 Added gang sheet attribute:", `${size} (${price})`);
-    }
-
-    console.log("🏷️ Final attributes array:", attributes);
-
-    // Fixed GraphQL mutation
-    const mutation = `
-      mutation addCartLines($cartId: ID!, $lines: [CartLineInput!]!) {
-        cartLinesAdd(cartId: $cartId, lines: $lines) {
-          cart { 
-            id 
-            checkoutUrl 
-            lines(first: 100) { 
-              edges { 
-                node { 
-                  id
-                  quantity 
-                  attributes { key value }
-                  merchandise {
-                    ... on ProductVariant {
-                      id
-                      title
-                      image { url altText }
-                      product { 
-                        title 
-                        id
-                      }
-                    }
-                  }
-                } 
-              } 
-            } 
-          }
-          userErrors { field message }
-        }
-      }`;
-
-    const variables = {
-      cartId: checkoutId,
-      lines: [
-        {
-          merchandiseId: selectedVariantId,
-          quantity: 1,
-          attributes: attributes.length > 0 ? attributes : undefined,
-        },
-      ],
-    };
-
-    console.log("📤 Sending add to cart mutation with variables:", variables);
-
-    const response = await fetch(
-      `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
-        body: JSON.stringify({
-          query: mutation,
-          variables: variables,
-        }),
-      }
-    );
-
-    const result = await response.json();
-    console.log("📥 Add to cart response:", result);
-
-    const cartLinesAdd = result.data?.cartLinesAdd;
-
-    if (cartLinesAdd?.userErrors?.length > 0) {
-      console.error("❌ Cart user errors:", cartLinesAdd.userErrors);
-      if (
-        cartLinesAdd.userErrors.some((e) =>
-          e.message.includes("does not exist")
-        )
-      ) {
-        console.log("🔄 Cart doesn't exist, creating new one...");
-        await createNewCart();
-        return addToCart(productId);
-      }
-      throw new Error(cartLinesAdd.userErrors[0].message);
-    }
-
-    if (!cartLinesAdd?.cart) {
-      console.error("❌ No cart data in response");
-      throw new Error("No cart data returned");
-    }
-
-    // Update cart UI
-    checkoutUrl = cartLinesAdd.cart.checkoutUrl;
-    localStorage.setItem("checkoutUrl", checkoutUrl);
-
-    const newLines = cartLinesAdd.cart.lines.edges;
-    console.log("📋 New cart lines after adding:", newLines);
-
-    // Track this item in our local cart state
-    if (fileUrl) {
-      cartItems.set(productId, {
-        fileUrl: fileUrl,
-        variantId: selectedVariantId,
-        lineId: newLines[newLines.length - 1]?.node?.id, // Get the line ID of the newly added item
-      });
-
-      // Disable the upload input and add to cart button for this product
-      disableProductUpload(productId);
-    }
-
-    cartCount = newLines.reduce((sum, e) => sum + e.node.quantity, 0);
-    console.log("🔢 New cart count:", cartCount);
-
-    updateCartCounter();
-    updateCheckoutButton();
-
-    addButton.textContent = "Added!";
-    console.log("✅ Item added to cart successfully!");
-
-    setTimeout(() => {
-      if (!cartItems.has(productId)) {
-        addButton.disabled = false;
-        addButton.textContent = "Add to Cart";
-      }
-    }, 800);
-  } catch (err) {
-    console.error("❌ Add to cart error:", err);
-    alert("Error adding to cart: " + err.message);
-    addButton.disabled = false;
-    addButton.textContent = "Add to Cart";
-  }
+  cartItems.set(productId, {
+    fileUrl,
+    variantId: selectedVariantId,
+    lineId: result.data.cartLinesAdd.cart.lines.edges.slice(-1)[0].node.id,
+  });
+  disableProductUpload(productId);
+  checkoutUrl = result.data.cartLinesAdd.cart.checkoutUrl;
+  updateCartCounter();
+  updateCheckoutButton();
 }
 
 // ----- CART COUNTER -----
@@ -813,175 +659,58 @@ function updateCheckoutButton() {
 
 // ----- SHOW CART POPUP (WITH DEBUGGING) -----
 async function showCartPopup() {
-  console.log("🛒 showCartPopup() called");
-  try {
-    await getOrCreateCheckout();
-    console.log("✅ Cart initialized. Cart ID:", checkoutId);
+  await getOrCreateCheckout();
 
-    const query = `query getCart($cartId: ID!) {
-      cart(id: $cartId) {
-        lines(first: 100) {
-          edges { 
-            node { 
-              id
-              quantity 
-              attributes { key value }
-              merchandise { 
-                ... on ProductVariant { 
-                  id 
-                  title 
-                  image { url altText }
-                  product { 
-                    title 
-                    id
-                  } 
-                } 
-              } 
-            } 
-          } 
-        } 
-      } 
+  const query = `
+    query getCart($cartId: ID!) {
+      cart(id: $cartId) { lines(first:100) { edges { node { id quantity attributes { key value } merchandise { ... on ProductVariant { id title image { url altText } product { id title } } } } } } checkoutUrl }
     }`;
-
-    console.log("📤 Sending GraphQL query with cartId:", checkoutId);
-
-    const res = await fetch(
-      `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
-        body: JSON.stringify({ query, variables: { cartId: checkoutId } }),
-      }
-    );
-
-    const data = await res.json();
-    console.log("📥 Raw cart response:", data);
-
-    if (data.errors) {
-      console.error("❌ GraphQL errors:", data.errors);
-      throw new Error(data.errors[0].message);
+  const res = await fetch(
+    `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Storefront-Access-Token": token,
+      },
+      body: JSON.stringify({ query, variables: { cartId: checkoutId } }),
     }
+  );
+  const data = await res.json();
+  const lines = data.data.cart.lines.edges || [];
 
-    const lines = data.data?.cart?.lines?.edges || [];
-    console.log("📋 Cart lines found:", lines.length);
+  const ul = document.getElementById("cart-items");
+  ul.innerHTML = lines
+    .map((e) => {
+      const fileUrl = e.node.attributes.find(
+        (a) => a.key === "Uploaded File"
+      )?.value;
+      const productImageUrl = e.node.merchandise.image?.url || "";
+      const productId = e.node.merchandise.product.id;
 
-    const ul = document.getElementById("cart-items");
-    if (!ul) {
-      console.error("❌ cart-items element not found!");
-      return;
-    }
+      const imageHtml = fileUrl
+        ? `<div style="display:flex; gap:0.5rem; align-items:center;">
+           <img src="${productImageUrl}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">
+           <img src="${fileUrl}" style="width:50px;height:50px;object-fit:cover;border:2px solid #007bff;border-radius:4px;">
+         </div>`
+        : `<img src="${productImageUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">`;
 
-    if (lines.length === 0) {
-      console.log("🛒 Cart is empty, showing empty message");
-      ul.innerHTML = "<li>Your bag is empty.</li>";
-      cartItems.clear(); // Clear our tracking map
-    } else {
-      console.log("✅ Rendering", lines.length, "cart items");
-      ul.innerHTML = lines
-        .map((e, index) => {
-          console.log(`🔍 Processing item ${index + 1}:`, e.node);
-
-          // Get uploaded file from attributes
-          let fileUrl = "";
-          const uploadedFileAttr = e.node.attributes?.find(
-            (a) => a.key === "Uploaded File"
-          );
-          if (uploadedFileAttr) {
-            fileUrl = uploadedFileAttr.value;
-            console.log("📎 Found uploaded file:", fileUrl);
-          }
-
-          // Product image
-          const productImageUrl = e.node.merchandise.image?.url || "";
-          const productId = e.node.merchandise.product.id;
-
-          // Enhanced image display - show both product and custom design
-          const imageSection = fileUrl
-            ? `
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-              <div style="position: relative;">
-                <img src="${productImageUrl}" style="width:50px; height:50px; object-fit:cover; border: 1px solid #ddd; border-radius: 4px;" alt="Product" title="Product Image">
+      return `<li style="display:flex;align-items:center;gap:0.75rem;">
+              ${imageHtml}
+              <div style="flex:1;">
+                <div>${e.node.merchandise.product.title}</div>
+                <div>Qty: ${e.node.quantity}</div>
               </div>
-              <div style="display: flex; align-items: center; gap: 0.25rem;">
-                <span style="font-size: 0.8em; color: #666;">+</span>
-                <div style="position: relative;">
-                  <img src="${fileUrl}" style="width:50px; height:50px; object-fit:cover; border: 2px solid #007bff; border-radius: 4px;" alt="Your design" title="Your Custom Design">
-                  <div style="position: absolute; -top: 5px; -right: 5px; background: #007bff; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 2px solid white;">✓</div>
-                </div>
-              </div>
-            </div>
-          `
-            : `
-            <div style="position: relative;">
-              <img src="${productImageUrl}" style="width:60px; height:60px; object-fit:cover; border-radius: 4px;" alt="${
-                e.node.merchandise.image?.altText || ""
-              }">
-            </div>`;
+              <button onclick="removeFromCart('${e.node.id}','${productId}')">Remove</button>
+            </li>`;
+    })
+    .join("");
 
-          const itemHtml = `
-          <li style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid #eee;">
-            ${imageSection}
-            <div style="flex: 1;">
-              <div style="font-weight: 600; margin-bottom: 0.25rem;">${
-                e.node.merchandise.product.title
-              }</div>
-              <div style="font-size: 0.9em; color: #666; margin-bottom: 0.25rem;">${
-                e.node.merchandise.title
-              }</div>
-              <div style="font-size: 0.85em; color: #999;">Qty: ${
-                e.node.quantity
-              }</div>
-              ${
-                fileUrl
-                  ? '<div style="font-size: 0.8em; color: #007bff; margin-top: 0.25rem;">🎨 Custom design included</div>'
-                  : ""
-              }
-            </div>
-            <button 
-              onclick="removeFromCart('${e.node.id}', '${productId}')" 
-              style="background: #ff4444; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8em; cursor: pointer;"
-              title="Remove item"
-            >
-              Remove
-            </button>
-          </li>
-        `;
-
-          return itemHtml;
-        })
-        .join("");
-    }
-
-    // Show the popup
-    const popup = document.getElementById("cart-popup");
-    if (!popup) {
-      console.error("❌ cart-popup element not found!");
-      return;
-    }
-
-    popup.style.display = "block";
-    console.log("👀 Cart popup displayed");
-
-    // Update cart count
-    cartCount = lines.reduce((sum, e) => sum + (e.node.quantity || 0), 0);
-    console.log("🔢 Updated cart count:", cartCount);
-
-    updateCartCounter();
-    updateCheckoutButton();
-  } catch (err) {
-    console.error("❌ Error showing cart popup:", err);
-    const ul = document.getElementById("cart-items");
-    if (ul) ul.innerHTML = "<li>Error loading cart items.</li>";
-  }
-
-  if (!cachedCart) {
-    cachedCart = await fetchCart(cartId);
-  }
-  renderCart(cachedCart);
+  cartCount = lines.reduce((sum, e) => sum + (e.node.quantity || 0), 0);
+  updateCartCounter();
+  updateCheckoutButton();
 }
+
 // ----- UPDATE CART FROM SERVER (FIXED) -----
 async function updateCartFromServer() {
   try {
