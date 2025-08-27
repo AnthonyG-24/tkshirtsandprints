@@ -19,6 +19,10 @@ async function loadConfig() {
     const res = await fetch("/.netlify/functions/getShopConfig");
     const data = await res.json();
 
+    // Assign these globally
+    shopDomain = data.shopDomain;
+    token = data.token;
+
     if (!data.collections) throw new Error("Collections not loaded");
 
     allCollections = data.collections;
