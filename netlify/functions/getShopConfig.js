@@ -11,7 +11,7 @@ cloudinary.config({
 
 module.exports.handler = async function (event, context) {
   const shopDomain = process.env.SHOP_DOMAIN;
-  const token = process.env.STORE_FRONT_TOKEN; // <-- change here
+  const token = process.env.SHOP_TOKEN; 
   const API_VERSION = "2025-01";
 
   // Determine which action based on HTTP method
