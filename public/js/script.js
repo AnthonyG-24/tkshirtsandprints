@@ -18,7 +18,7 @@ let cachedCart = null;
 
 async function loadConfig() {
   try {
-    const res = await fetch("/config.json");
+    const res = await fetch("config.json");
     const data = await res.json();
     shopDomain = data.shopDomain;
     token = data.token;
