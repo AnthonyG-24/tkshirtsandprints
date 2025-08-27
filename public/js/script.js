@@ -144,28 +144,15 @@ async function uploadToCloudinary(file) {
 }
 
 async function fetchCollections() {
-  const query = `{
-    collections(first: 20) {
-      edges { node { id title handle description image { url altText } } }
-    }
-  }`;
   try {
-    const res = await fetch(
-      `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
-        body: JSON.stringify({ query }),
-      }
-    );
+    const res = await fetch(`/.netlify/functions/getShopConfig`, {
+      method: "POST",
+      body: JSON.stringify({ action: "fetchCollections" }),
+    });
     if (!res.ok) throw new Error(await res.text());
+
     const data = await res.json();
-    if (data.errors)
-      throw new Error(data.errors[0]?.message || "GraphQL Error");
-    return data.data.collections?.edges || [];
+    return data.collections || [];
   } catch (error) {
     showCollectionError(`Failed to load collections: ${error.message}`);
     return [];
@@ -173,39 +160,15 @@ async function fetchCollections() {
 }
 
 async function fetchCollectionProducts(handle) {
-  const query = `{
-    collectionByHandle(handle: "${handle}") {
-      id title
-      products(first: 50) {
-        edges {
-          node {
-            id title handle description priceRange { minVariantPrice { amount currencyCode } maxVariantPrice { amount currencyCode } }
-            images(first: 3) { edges { node { url altText } } }
-            variants(first: 10) { edges { node { id title price { amount currencyCode } compareAtPrice { amount currencyCode } availableForSale selectedOptions { name value } } } }
-            tags productType vendor availableForSale
-          }
-        }
-      }
-    }
-  }`;
   try {
-    const res = await fetch(
-      `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
-        body: JSON.stringify({ query }),
-      }
-    );
+    const res = await fetch(`/.netlify/functions/getShopConfig`, {
+      method: "POST",
+      body: JSON.stringify({ action: "fetchCollectionProducts", handle }),
+    });
     if (!res.ok) throw new Error(await res.text());
+
     const data = await res.json();
-    if (data.errors) throw new Error("GraphQL query failed");
-    if (!data.data.collectionByHandle)
-      throw new Error(`Collection "${handle}" not found`);
-    return data.data.collectionByHandle.products.edges;
+    return data.products || [];
   } catch (error) {
     showError(`Failed to load products: ${error.message}`);
     return [];
@@ -220,19 +183,23 @@ function displayCollections(collections) {
     container.innerHTML = '<p class="error-message">No collections found</p>';
     return;
   }
+
   const allButton = document.createElement("button");
   allButton.className = "tag active";
   allButton.textContent = "All";
   allButton.dataset.collection = "all";
   container.appendChild(allButton);
-  collections.forEach(({ node }) => {
+
+  collections.forEach((col) => {
+    // changed from { node } => col
     const button = document.createElement("button");
     button.className = "tag";
-    button.textContent = node.title;
-    button.dataset.collection = node.handle;
-    button.dataset.collectionId = node.id;
+    button.textContent = col.title;
+    button.dataset.collection = col.handle;
+    button.dataset.collectionId = col.id;
     container.appendChild(button);
   });
+
   addCollectionListeners();
 }
 
@@ -665,52 +632,44 @@ function updateCheckoutButton() {
 async function showCartPopup() {
   await getOrCreateCheckout();
 
-  const query = `
-    query getCart($cartId: ID!) {
-      cart(id: $cartId) { lines(first:100) { edges { node { id quantity attributes { key value } merchandise { ... on ProductVariant { id title image { url altText } product { id title } } } } } } checkoutUrl }
-    }`;
-  const res = await fetch(
-    `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Storefront-Access-Token": token,
-      },
-      body: JSON.stringify({ query, variables: { cartId: checkoutId } }),
-    }
-  );
+  // Replace Shopify fetch with Netlify function call
+  const res = await fetch(`/.netlify/functions/getShopConfig`, {
+    method: "POST",
+    body: JSON.stringify({ action: "getCart", cartId: checkoutId }),
+  });
   const data = await res.json();
-  const lines = data.data.cart.lines.edges || [];
+
+  const lines = data.lines || [];
+  checkoutUrl = data.checkoutUrl || checkoutUrl;
 
   const ul = document.getElementById("cart-items");
   ul.innerHTML = lines
     .map((e) => {
-      const fileUrl = e.node.attributes.find(
+      const fileUrl = e.attributes?.find(
         (a) => a.key === "Uploaded File"
       )?.value;
-      const productImageUrl = e.node.merchandise.image?.url || "";
-      const productId = e.node.merchandise.product.id;
+      const productImageUrl = e.merchandise?.image?.url || "";
+      const productId = e.merchandise?.product?.id;
 
       const imageHtml = fileUrl
         ? `<div style="display:flex; gap:0.5rem; align-items:center;">
-           <img src="${productImageUrl}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">
-           <img src="${fileUrl}" style="width:50px;height:50px;object-fit:cover;border:2px solid #007bff;border-radius:4px;">
-         </div>`
+             <img src="${productImageUrl}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">
+             <img src="${fileUrl}" style="width:50px;height:50px;object-fit:cover;border:2px solid #007bff;border-radius:4px;">
+           </div>`
         : `<img src="${productImageUrl}" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">`;
 
       return `<li style="display:flex;align-items:center;gap:0.75rem;">
-              ${imageHtml}
-              <div style="flex:1;">
-                <div>${e.node.merchandise.product.title}</div>
-                <div>Qty: ${e.node.quantity}</div>
-              </div>
-              <button onclick="removeFromCart('${e.node.id}','${productId}')">Remove</button>
-            </li>`;
+                ${imageHtml}
+                <div style="flex:1;">
+                  <div>${e.merchandise.product.title}</div>
+                  <div>Qty: ${e.quantity}</div>
+                </div>
+                <button onclick="removeFromCart('${e.id}','${productId}')">Remove</button>
+              </li>`;
     })
     .join("");
 
-  cartCount = lines.reduce((sum, e) => sum + (e.node.quantity || 0), 0);
+  cartCount = lines.reduce((sum, e) => sum + (e.quantity || 0), 0);
   updateCartCounter();
   updateCheckoutButton();
 }
@@ -720,72 +679,38 @@ async function updateCartFromServer() {
   try {
     await getOrCreateCheckout();
 
-    const query = `
-      query getCart($cartId: ID!) {
-        cart(id: $cartId) {
-          checkoutUrl
-          lines(first: 100) {
-            edges {
-              node {
-                id
-                quantity
-                attributes { key value }
-                merchandise {
-                  ... on ProductVariant {
-                    id
-                    title
-                    image { url altText }
-                    product { 
-                      title 
-                      id
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
-
-    const res = await fetch(
-      `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
-        body: JSON.stringify({ query, variables: { cartId: checkoutId } }),
-      }
-    );
+    // Fetch cart data from Netlify function
+    const res = await fetch(`/.netlify/functions/getShopConfig`, {
+      method: "POST",
+      body: JSON.stringify({ action: "getCart", cartId: checkoutId }),
+    });
 
     const data = await res.json();
-    const lines = data.data?.cart?.lines?.edges || [];
+    const lines = data.lines || [];
 
     // Sync our local cart state with server
     cartItems.clear();
     lines.forEach((line) => {
-      const productId = line.node.merchandise.product.id;
-      const uploadedFileAttr = line.node.attributes?.find(
+      const productId = line.merchandise.product.id;
+      const uploadedFileAttr = line.attributes?.find(
         (a) => a.key === "Uploaded File"
       );
 
       if (uploadedFileAttr) {
         cartItems.set(productId, {
           fileUrl: uploadedFileAttr.value,
-          variantId: line.node.merchandise.id,
-          lineId: line.node.id,
+          variantId: line.merchandise.id,
+          lineId: line.id,
         });
         disableProductUpload(productId);
       }
     });
 
-    cartCount = lines.reduce((sum, line) => sum + (line.node.quantity || 0), 0);
+    cartCount = lines.reduce((sum, line) => sum + (line.quantity || 0), 0);
 
     // Update checkout URL if it changed
-    if (data.data?.cart?.checkoutUrl) {
-      checkoutUrl = data.data.cart.checkoutUrl;
+    if (data.checkoutUrl) {
+      checkoutUrl = data.checkoutUrl;
       localStorage.setItem("checkoutUrl", checkoutUrl);
     }
 
@@ -824,74 +749,41 @@ async function clearCart() {
   try {
     await getOrCreateCheckout();
 
-    const query = `query getCart($cartId: ID!) {
-      cart(id: $cartId) { 
-        lines(first: 100) { 
-          edges { 
-            node { 
-              id 
-              merchandise {
-                ... on ProductVariant {
-                  product { id }
-                }
-              }
-            } 
-          } 
-        } 
-      }
-    }`;
-
-    const res = await fetch(
-      `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
-        body: JSON.stringify({ query, variables: { cartId: checkoutId } }),
-      }
-    );
-
+    // Get current cart lines from server via Netlify function
+    const res = await fetch(`/.netlify/functions/getShopConfig`, {
+      method: "POST",
+      body: JSON.stringify({ action: "getCart", cartId: checkoutId }),
+    });
     const responseData = await res.json();
-    const lines = responseData.data?.cart?.lines?.edges || [];
-    const lineIds = lines.map((e) => e.node.id);
+    const lines = responseData.lines || [];
+    const lineIds = lines.map((line) => line.id);
 
     if (lineIds.length > 0) {
-      const mutation = `mutation removeCartLines($cartId: ID!, $lineIds: [ID!]!) {
-        cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
-          cart { lines(first: 100) { edges { node { quantity } } } }
-          userErrors { field message }
-        }
-      }`;
-
-      await fetch(`https://${shopDomain}/api/${API_VERSION}/graphql.json`, {
+      // Remove lines via Netlify function
+      await fetch(`/.netlify/functions/getShopConfig`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
         body: JSON.stringify({
-          query: mutation,
-          variables: { cartId: checkoutId, lineIds },
+          action: "removeCartLines",
+          cartId: checkoutId,
+          lineIds,
         }),
       });
 
       // Re-enable all products that were in cart
       lines.forEach((line) => {
-        const productId = line.node.merchandise.product.id;
+        const productId = line.merchandise.product.id;
         enableProductUpload(productId);
       });
     }
 
-    // Clear our local tracking
+    // Clear local tracking
     cartItems.clear();
     cartCount = 0;
     checkoutUrl = null;
     updateCartCounter();
     updateCheckoutButton();
-    document.getElementById("cart-items").innerHTML =
-      "<li>Your bag is empty.</li>";
+    const cartList = document.getElementById("cart-items");
+    if (cartList) cartList.innerHTML = "<li>Your bag is empty.</li>";
   } catch (err) {
     console.error("Error clearing cart:", err);
   }
@@ -899,60 +791,26 @@ async function clearCart() {
 
 async function removeFromCart(lineId, productId) {
   try {
-    const mutation = `
-      mutation removeCartLines($cartId: ID!, $lineIds: [ID!]!) {
-        cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
-          cart { 
-            lines(first: 100) { 
-              edges { 
-                node { 
-                  id 
-                  quantity 
-                  merchandise {
-                    ... on ProductVariant {
-                      product { id }
-                    }
-                  }
-                } 
-              } 
-            } 
-          }
-          userErrors { field message }
-        }
-      }
-    `;
+    // Remove the line via Netlify function
+    const res = await fetch(`/.netlify/functions/getShopConfig`, {
+      method: "POST",
+      body: JSON.stringify({
+        action: "removeCartLines",
+        cartId: checkoutId,
+        lineIds: [lineId],
+      }),
+    });
+    const result = await res.json();
 
-    const response = await fetch(
-      `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": token,
-        },
-        body: JSON.stringify({
-          query: mutation,
-          variables: {
-            cartId: checkoutId,
-            lineIds: [lineId],
-          },
-        }),
-      }
-    );
+    if (result.error) throw new Error(result.error);
 
-    const result = await response.json();
-
-    if (result.data?.cartLinesRemove?.userErrors?.length > 0) {
-      throw new Error(result.data.cartLinesRemove.userErrors[0].message);
-    }
-
-    // Remove from our tracking and re-enable upload
+    // Remove from local tracking and re-enable upload
     cartItems.delete(productId);
     enableProductUpload(productId);
 
-    // Update cart count
-    const lines = result.data?.cartLinesRemove?.cart?.lines?.edges || [];
-    cartCount = lines.reduce((sum, e) => sum + (e.node.quantity || 0), 0);
+    // Update cart count based on updated lines
+    const lines = result.lines || [];
+    cartCount = lines.reduce((sum, e) => sum + (e.quantity || 0), 0);
 
     updateCartCounter();
     updateCheckoutButton();
@@ -1066,33 +924,14 @@ function debugCart() {
   console.log("LocalStorage checkoutUrl:", localStorage.getItem("checkoutUrl"));
 }
 
-window.removeFromCart = removeFromCart;
-
 async function fetchCart(cartId) {
-  const query = `query getCart($cartId: ID!) {
-        cart(id: $cartId) {
-            id
-            lines(first: 10) {
-                edges {
-                    node {
-                        id
-                        quantity
-                        attributes { key value }
-                        merchandise { ... on ProductVariant { id title image { url } } }
-                    }
-                }
-            }
-        }
-    }`;
-
-  const res = await fetch("/your-graphql-endpoint", {
+  const res = await fetch(`/.netlify/functions/getShopConfig`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables: { cartId } }),
+    body: JSON.stringify({ action: "fetchCart", cartId }),
   });
 
   const data = await res.json();
-  return data.data.cart;
+  return data.cart;
 }
 
 function renderCart(cart) {
@@ -1102,25 +941,23 @@ function renderCart(cart) {
   cart.lines.edges.forEach((edge, index) => {
     const item = edge.node;
 
-    // Create cart item element
-    const div = document.createElement("div");
-    div.classList.add("cart-item");
-
-    // Use thumbnail for faster load
+    // Use thumbnail for faster load if uploaded file exists
     const imgUrl = item.attributes.find(
       (attr) => attr.key === "uploaded_file"
     )?.value;
     const thumbUrl = imgUrl
       ? imgUrl.replace("/upload/", "/upload/w_200,h_200,c_fit/")
-      : "";
+      : item.merchandise.image?.url || "";
 
+    const div = document.createElement("div");
+    div.classList.add("cart-item");
     div.innerHTML = `
-            <img src="${thumbUrl}" alt="Item ${index + 1}" />
-            <div class="item-info">
-                <p>${item.merchandise.title}</p>
-                <p>Quantity: ${item.quantity}</p>
-            </div>
-        `;
+      <img src="${thumbUrl}" alt="Item ${index + 1}" />
+      <div class="item-info">
+        <p>${item.merchandise.title}</p>
+        <p>Quantity: ${item.quantity}</p>
+      </div>
+    `;
 
     popup.appendChild(div);
   });
@@ -1132,7 +969,9 @@ function renderCart(cart) {
   popup.style.display = "block"; // Show popup
 }
 
-// Optional: clear cache when cart changes
+// clear cache when cart changes
 function clearCartCache() {
   cachedCart = null;
 }
+
+window.removeFromCart = removeFromCart;
