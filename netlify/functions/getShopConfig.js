@@ -1,5 +1,4 @@
 const API_VERSION = "2025-01";
-
 const cloudinary = require("cloudinary").v2;
 const fetch = require("node-fetch");
 
@@ -11,12 +10,9 @@ cloudinary.config({
 
 module.exports.handler = async function (event, context) {
   const shopDomain = process.env.SHOP_DOMAIN;
-  const token = process.env.SHOP_TOKEN; 
-  const API_VERSION = "2025-01";
+  const token = process.env.SHOP_TOKEN;
 
-  // Determine which action based on HTTP method
   if (event.httpMethod === "GET") {
-    // Shopify collections fetch
     const query = `{
       collections(first: 20) {
         edges {
@@ -46,12 +42,18 @@ module.exports.handler = async function (event, context) {
 
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      return { statusCode: 200, body: JSON.stringify(data) };
+
+      // Only return what the frontend needs
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ collections: data.data.collections.edges }),
+      };
     } catch (err) {
       return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
     }
-  } else if (event.httpMethod === "POST") {
-    // Cloudinary image upload
+  }
+
+  if (event.httpMethod === "POST") {
     try {
       const body =
         typeof event.body === "string" ? JSON.parse(event.body) : event.body;
@@ -60,6 +62,7 @@ module.exports.handler = async function (event, context) {
       const result = await cloudinary.uploader.upload(file, {
         folder: "uploads",
       });
+
       return {
         statusCode: 200,
         body: JSON.stringify({ url: result.secure_url }),
@@ -68,7 +71,7 @@ module.exports.handler = async function (event, context) {
       console.error(err);
       return { statusCode: 500, body: "Upload failed" };
     }
-  } else {
-    return { statusCode: 405, body: "Method Not Allowed" };
   }
+
+  return { statusCode: 405, body: "Method Not Allowed" };
 };

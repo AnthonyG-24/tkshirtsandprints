@@ -16,14 +16,16 @@ let cachedCart = null;
 
 async function loadConfig() {
   try {
-    // Note the leading slash!
-    const res = await fetch("/netlify/functions/getShopConfig");
+    const res = await fetch("/.netlify/functions/getShopConfig");
     const data = await res.json();
 
-    shopDomain = data.shopDomain;
-    token = data.token;
+    if (!data.collections) throw new Error("Collections not loaded");
 
-    if (!shopDomain || !token) throw new Error("Shopify credentials missing");
+    allCollections = data.collections;
+    displayCollections(allCollections);
+
+    const firstTag = document.querySelector(".tag-selector .tag");
+    if (firstTag) setTimeout(() => firstTag.click(), 500);
   } catch (err) {
     console.error("Shopify config error:", err);
     showCollectionError("Shopify config not loaded.");
@@ -39,6 +41,7 @@ async function init() {
   if (firstTag) setTimeout(() => firstTag.click(), 500);
 }
 
+//Shopify API code below
 document.querySelectorAll(".upload-input").forEach((input) => {
   input.addEventListener("change", async () => {
     const file = input.files[0];
