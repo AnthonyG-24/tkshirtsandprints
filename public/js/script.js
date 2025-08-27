@@ -10,15 +10,23 @@ const placeholderImage = "";
 let checkoutId = null;
 let checkoutUrl = null;
 let cartCount = 0;
+let cartItems = new Map();
+let cartId = null;
+let cachedCart = null;
 
 async function loadConfig() {
   try {
-    const res = await fetch("config.json");
+    // Note the leading slash!
+    const res = await fetch("/netlify/functions/getShopConfig");
     const data = await res.json();
+
     shopDomain = data.shopDomain;
     token = data.token;
-  } catch {
-    showCollectionError("Shopify config not loaded. Check config.json.");
+
+    if (!shopDomain || !token) throw new Error("Shopify credentials missing");
+  } catch (err) {
+    console.error("Shopify config error:", err);
+    showCollectionError("Shopify config not loaded.");
   }
 }
 
@@ -30,6 +38,22 @@ async function init() {
   const firstTag = document.querySelector(".tag-selector .tag");
   if (firstTag) setTimeout(() => firstTag.click(), 500);
 }
+
+document.querySelectorAll(".upload-input").forEach((input) => {
+  input.addEventListener("change", async () => {
+    const file = input.files[0];
+    if (!file) return;
+    const url = await uploadToCloudinary(file);
+    let preview = input.parentElement.querySelector("img");
+    if (!preview) {
+      preview = document.createElement("img");
+      preview.style.maxWidth = "80px";
+      preview.style.marginTop = "5px";
+      input.parentElement.appendChild(preview);
+    }
+    preview.src = url;
+  });
+});
 
 document.addEventListener("DOMContentLoaded", async () => {
   await init();
@@ -88,6 +112,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 });
+
+async function uploadToCloudinary(file) {
+  if (!file) return null;
+
+  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Cloudinary upload failed");
+
+    const data = await res.json();
+    return data.secure_url;
+  } catch (err) {
+    console.error("Cloudinary error:", err);
+    alert("Failed to upload your file. Please try again.");
+    return null;
+  }
+}
 
 async function fetchCollections() {
   const query = `{
@@ -231,16 +281,19 @@ function displayProducts(products, page = 1) {
     container.innerHTML = '<p class="no-products">No products found.</p>';
     return;
   }
+
   totalPages = Math.ceil(products.length / PRODUCTS_PER_PAGE);
   currentPage = page;
   const productsToShow = products.slice(
     (page - 1) * PRODUCTS_PER_PAGE,
     page * PRODUCTS_PER_PAGE
   );
+
   productsToShow.forEach(({ node }) => {
     const imageObj = node.images.edges[0]?.node;
     const imageUrl = imageObj?.url || placeholderImage;
     const imageAlt = imageObj?.altText || node.title || "";
+
     const options = node.variants.edges
       .map((v) => {
         const variant = v.node;
@@ -258,6 +311,30 @@ function displayProducts(products, page = 1) {
         }>${variant.title} - ${priceDisplay}${availability}</option>`;
       })
       .join("");
+
+    const isDTF = node.tags.includes("DTF Transfers");
+    const gangSheetHtml = isDTF
+      ? `
+        <div class="gang-sheet-options">
+          <label for="gang-size-${node.id}">Choose Gang Sheet Size:</label>
+          <select id="gang-size-${node.id}" class="gang-size-selector">
+            <option value="22x12|8.00">22x12 - $8.00</option>
+            <option value="22x24|16.00">22x24 - $16.00</option>
+            <option value="22x36|23.00">22x36 - $23.00</option>
+            <option value="22x48|31.00">22x48 - $31.00</option>
+            <option value="22x60|38.00">22x60 - $38.00</option>
+            <option value="22x80|50.00">22x80 - $50.00</option>
+            <option value="22x100|62.00">22x100 - $62.00</option>
+            <option value="22x120|74.00">22x120 - $74.00</option>
+            <option value="22x140|86.00">22x140 - $86.00</option>
+            <option value="22x160|98.00">22x160 - $98.00</option>
+            <option value="22x180|110.00">22x180 - $110.00</option>
+            <option value="22x200|124.00">22x200 - $124.00</option>
+          </select>
+        </div>
+      `
+      : "";
+
     const productDiv = document.createElement("div");
     productDiv.className = "product";
     productDiv.dataset.productId = node.id;
@@ -284,14 +361,31 @@ function displayProducts(products, page = 1) {
             : ""
         }
         ${node.vendor ? `<p class="product-vendor">by ${node.vendor}</p>` : ""}
+
         ${
           node.variants.edges.length
-            ? `<div class="product-variants"><label for="variants-${node.id}">Options:</label><select id="variants-${node.id}" class="variant-selector">${options}</select></div>`
+            ? `<div class="product-variants">
+                 <label for="variants-${node.id}">Options:</label>
+                 <select id="variants-${node.id}" class="variant-selector">${options}</select>
+               </div>`
             : ""
         }
+
+        <div class="upload-wrapper">
+          <label for="upload-${node.id}">Upload your design:</label>
+          <input type="file" id="upload-${
+            node.id
+          }" class="upload-input" accept="image/*,application/pdf" />
+        </div>
+
+        ${gangSheetHtml}
+
         <button class="add-to-cart-btn" ${
           !node.availableForSale ? "disabled" : ""
-        }>${node.availableForSale ? "Add to Cart" : "Sold Out"}</button>
+        }>
+          ${node.availableForSale ? "Add to Cart" : "Sold Out"}
+        </button>
+
         ${
           node.tags.length
             ? `<div class="product-tags">${node.tags
@@ -302,10 +396,12 @@ function displayProducts(products, page = 1) {
       </div>
     `;
     container.appendChild(productDiv);
+
     const addButton = productDiv.querySelector(".add-to-cart-btn");
     if (addButton)
       addButton.addEventListener("click", () => addToCart(node.id));
   });
+
   renderPagination(products);
 }
 
@@ -398,7 +494,12 @@ function resetCartState() {
 
 async function validateCart(cartId) {
   try {
-    const query = `query getCart($cartId: ID!) { cart(id: $cartId) { id checkoutUrl lines(first:1) { edges { node { id } } } } }`;
+    const query = `query getCart($cartId: ID!) { 
+      cart(id: $cartId) { 
+        id checkoutUrl 
+        lines(first:1) { edges { node { id } } } 
+      } 
+    }`;
     const res = await fetch(
       `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
       {
@@ -418,7 +519,12 @@ async function validateCart(cartId) {
 }
 
 async function createNewCart() {
-  const mutation = `mutation { cartCreate(input: {}) { cart { id checkoutUrl } userErrors { field message } } }`;
+  const mutation = `mutation { 
+    cartCreate(input: {}) { 
+      cart { id checkoutUrl } 
+      userErrors { field message } 
+    } 
+  }`;
   const res = await fetch(
     `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
     {
@@ -441,11 +547,29 @@ async function createNewCart() {
   return { checkoutId, checkoutUrl };
 }
 
-// ----- ADD TO CART -----
+// ----- ADD TO CART (WITH DEBUGGING) -----
 async function addToCart(productId) {
+  console.log("🛒 addToCart() called for product:", productId);
+
   const variantSelect = document.getElementById(`variants-${productId}`);
   const selectedVariantId = variantSelect?.value;
-  if (!selectedVariantId) return alert("Please select a variant");
+  if (!selectedVariantId) {
+    console.log("❌ No variant selected");
+    return alert("Please select a variant");
+  }
+
+  // Check if this item (with photo) is already in cart
+  const fileInput = document.getElementById(`upload-${productId}`);
+  const file = fileInput?.files[0];
+
+  if (file && cartItems.has(productId)) {
+    alert(
+      "This item is already in your cart with a custom design. Please remove it first if you want to add a different design."
+    );
+    return;
+  }
+
+  console.log("✅ Selected variant:", selectedVariantId);
 
   const addButton = variantSelect
     .closest(".product-info")
@@ -455,15 +579,105 @@ async function addToCart(productId) {
 
   try {
     await getOrCreateCheckout();
+    console.log("✅ Cart ready. Cart ID:", checkoutId);
 
+    // Handle file upload
+    let fileUrl = "";
+
+    if (file) {
+      console.log("📎 File selected for upload:", file.name);
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+      fileUrl = data.secure_url;
+      console.log("✅ File uploaded:", fileUrl);
+
+      if (fileUrl) {
+        let existingPreview = fileInput.parentElement.querySelector("img");
+        if (!existingPreview) {
+          const preview = document.createElement("img");
+          preview.src = fileUrl;
+          preview.style.maxWidth = "80px";
+          preview.style.marginTop = "5px";
+          fileInput.parentElement.appendChild(preview);
+        } else {
+          existingPreview.src = fileUrl;
+        }
+      }
+    }
+
+    // Prepare attributes array
+    const attributes = [];
+    if (fileUrl) {
+      attributes.push({ key: "Uploaded File", value: fileUrl });
+      console.log("📎 Added file attribute:", fileUrl);
+    }
+
+    const gangSizeSelect = document.getElementById(`gang-size-${productId}`);
+    if (gangSizeSelect) {
+      const [size, price] = gangSizeSelect.value.split("|");
+      attributes.push({ key: "Gang Sheet", value: `${size} (${price})` });
+      console.log("📏 Added gang sheet attribute:", `${size} (${price})`);
+    }
+
+    console.log("🏷️ Final attributes array:", attributes);
+
+    // Fixed GraphQL mutation
     const mutation = `
       mutation addCartLines($cartId: ID!, $lines: [CartLineInput!]!) {
         cartLinesAdd(cartId: $cartId, lines: $lines) {
-          cart { id checkoutUrl lines(first: 100) { edges { node { quantity } } } }
+          cart { 
+            id 
+            checkoutUrl 
+            lines(first: 100) { 
+              edges { 
+                node { 
+                  id
+                  quantity 
+                  attributes { key value }
+                  merchandise {
+                    ... on ProductVariant {
+                      id
+                      title
+                      image { url altText }
+                      product { 
+                        title 
+                        id
+                      }
+                    }
+                  }
+                } 
+              } 
+            } 
+          }
           userErrors { field message }
         }
       }`;
-    const res = await fetch(
+
+    const variables = {
+      cartId: checkoutId,
+      lines: [
+        {
+          merchandiseId: selectedVariantId,
+          quantity: 1,
+          attributes: attributes.length > 0 ? attributes : undefined,
+        },
+      ],
+    };
+
+    console.log("📤 Sending add to cart mutation with variables:", variables);
+
+    const response = await fetch(
       `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
       {
         method: "POST",
@@ -473,45 +687,71 @@ async function addToCart(productId) {
         },
         body: JSON.stringify({
           query: mutation,
-          variables: {
-            cartId: checkoutId,
-            lines: [{ merchandiseId: selectedVariantId, quantity: 1 }],
-          },
+          variables: variables,
         }),
       }
     );
-    const data = await res.json();
-    const cartLinesAdd = data.data?.cartLinesAdd;
 
-    if (cartLinesAdd.userErrors?.length > 0) {
+    const result = await response.json();
+    console.log("📥 Add to cart response:", result);
+
+    const cartLinesAdd = result.data?.cartLinesAdd;
+
+    if (cartLinesAdd?.userErrors?.length > 0) {
+      console.error("❌ Cart user errors:", cartLinesAdd.userErrors);
       if (
         cartLinesAdd.userErrors.some((e) =>
           e.message.includes("does not exist")
         )
       ) {
+        console.log("🔄 Cart doesn't exist, creating new one...");
         await createNewCart();
-        return addToCart(productId); // retry
+        return addToCart(productId);
       }
       throw new Error(cartLinesAdd.userErrors[0].message);
     }
 
+    if (!cartLinesAdd?.cart) {
+      console.error("❌ No cart data in response");
+      throw new Error("No cart data returned");
+    }
+
+    // Update cart UI
     checkoutUrl = cartLinesAdd.cart.checkoutUrl;
     localStorage.setItem("checkoutUrl", checkoutUrl);
 
-    cartCount = cartLinesAdd.cart.lines.edges.reduce(
-      (sum, e) => sum + e.node.quantity,
-      0
-    );
+    const newLines = cartLinesAdd.cart.lines.edges;
+    console.log("📋 New cart lines after adding:", newLines);
+
+    // Track this item in our local cart state
+    if (fileUrl) {
+      cartItems.set(productId, {
+        fileUrl: fileUrl,
+        variantId: selectedVariantId,
+        lineId: newLines[newLines.length - 1]?.node?.id, // Get the line ID of the newly added item
+      });
+
+      // Disable the upload input and add to cart button for this product
+      disableProductUpload(productId);
+    }
+
+    cartCount = newLines.reduce((sum, e) => sum + e.node.quantity, 0);
+    console.log("🔢 New cart count:", cartCount);
+
     updateCartCounter();
     updateCheckoutButton();
 
     addButton.textContent = "Added!";
+    console.log("✅ Item added to cart successfully!");
+
     setTimeout(() => {
-      addButton.disabled = false;
-      addButton.textContent = "Add to Cart";
+      if (!cartItems.has(productId)) {
+        addButton.disabled = false;
+        addButton.textContent = "Add to Cart";
+      }
     }, 800);
   } catch (err) {
-    console.error("Add to cart error:", err);
+    console.error("❌ Add to cart error:", err);
     alert("Error adding to cart: " + err.message);
     addButton.disabled = false;
     addButton.textContent = "Add to Cart";
@@ -568,11 +808,40 @@ function updateCheckoutButton() {
   }
 }
 
-// ----- SHOW CART POPUP -----
+// ----- SHOW CART POPUP (WITH DEBUGGING) -----
 async function showCartPopup() {
+  console.log("🛒 showCartPopup() called");
   try {
     await getOrCreateCheckout();
-    const query = `query getCart($cartId: ID!) { cart(id: $cartId) { lines(first: 100) { edges { node { quantity merchandise { ... on ProductVariant { id title product { title } } } } } } } }`;
+    console.log("✅ Cart initialized. Cart ID:", checkoutId);
+
+    const query = `query getCart($cartId: ID!) {
+      cart(id: $cartId) {
+        lines(first: 100) {
+          edges { 
+            node { 
+              id
+              quantity 
+              attributes { key value }
+              merchandise { 
+                ... on ProductVariant { 
+                  id 
+                  title 
+                  image { url altText }
+                  product { 
+                    title 
+                    id
+                  } 
+                } 
+              } 
+            } 
+          } 
+        } 
+      } 
+    }`;
+
+    console.log("📤 Sending GraphQL query with cartId:", checkoutId);
+
     const res = await fetch(
       `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
       {
@@ -584,28 +853,133 @@ async function showCartPopup() {
         body: JSON.stringify({ query, variables: { cartId: checkoutId } }),
       }
     );
-    const data = await res.json();
-    const lines = data.data?.cart?.lines?.edges || [];
-    const ul = document.getElementById("cart-items");
-    ul.innerHTML =
-      lines.length === 0
-        ? "<li>Your bag is empty.</li>"
-        : lines
-            .map(
-              (e) =>
-                `<li>${e.node.merchandise.product.title} - ${e.node.merchandise.title} x ${e.node.quantity}</li>`
-            )
-            .join("");
 
-    document.getElementById("cart-popup").style.display = "block";
-    cartCount = lines.reduce((sum, e) => sum + e.node.quantity, 0);
+    const data = await res.json();
+    console.log("📥 Raw cart response:", data);
+
+    if (data.errors) {
+      console.error("❌ GraphQL errors:", data.errors);
+      throw new Error(data.errors[0].message);
+    }
+
+    const lines = data.data?.cart?.lines?.edges || [];
+    console.log("📋 Cart lines found:", lines.length);
+
+    const ul = document.getElementById("cart-items");
+    if (!ul) {
+      console.error("❌ cart-items element not found!");
+      return;
+    }
+
+    if (lines.length === 0) {
+      console.log("🛒 Cart is empty, showing empty message");
+      ul.innerHTML = "<li>Your bag is empty.</li>";
+      cartItems.clear(); // Clear our tracking map
+    } else {
+      console.log("✅ Rendering", lines.length, "cart items");
+      ul.innerHTML = lines
+        .map((e, index) => {
+          console.log(`🔍 Processing item ${index + 1}:`, e.node);
+
+          // Get uploaded file from attributes
+          let fileUrl = "";
+          const uploadedFileAttr = e.node.attributes?.find(
+            (a) => a.key === "Uploaded File"
+          );
+          if (uploadedFileAttr) {
+            fileUrl = uploadedFileAttr.value;
+            console.log("📎 Found uploaded file:", fileUrl);
+          }
+
+          // Product image
+          const productImageUrl = e.node.merchandise.image?.url || "";
+          const productId = e.node.merchandise.product.id;
+
+          // Enhanced image display - show both product and custom design
+          const imageSection = fileUrl
+            ? `
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <div style="position: relative;">
+                <img src="${productImageUrl}" style="width:50px; height:50px; object-fit:cover; border: 1px solid #ddd; border-radius: 4px;" alt="Product" title="Product Image">
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.25rem;">
+                <span style="font-size: 0.8em; color: #666;">+</span>
+                <div style="position: relative;">
+                  <img src="${fileUrl}" style="width:50px; height:50px; object-fit:cover; border: 2px solid #007bff; border-radius: 4px;" alt="Your design" title="Your Custom Design">
+                  <div style="position: absolute; -top: 5px; -right: 5px; background: #007bff; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; display: flex; align-items: center; justify-content: center; border: 2px solid white;">✓</div>
+                </div>
+              </div>
+            </div>
+          `
+            : `
+            <div style="position: relative;">
+              <img src="${productImageUrl}" style="width:60px; height:60px; object-fit:cover; border-radius: 4px;" alt="${
+                e.node.merchandise.image?.altText || ""
+              }">
+            </div>`;
+
+          const itemHtml = `
+          <li style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid #eee;">
+            ${imageSection}
+            <div style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: 0.25rem;">${
+                e.node.merchandise.product.title
+              }</div>
+              <div style="font-size: 0.9em; color: #666; margin-bottom: 0.25rem;">${
+                e.node.merchandise.title
+              }</div>
+              <div style="font-size: 0.85em; color: #999;">Qty: ${
+                e.node.quantity
+              }</div>
+              ${
+                fileUrl
+                  ? '<div style="font-size: 0.8em; color: #007bff; margin-top: 0.25rem;">🎨 Custom design included</div>'
+                  : ""
+              }
+            </div>
+            <button 
+              onclick="removeFromCart('${e.node.id}', '${productId}')" 
+              style="background: #ff4444; color: white; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8em; cursor: pointer;"
+              title="Remove item"
+            >
+              Remove
+            </button>
+          </li>
+        `;
+
+          return itemHtml;
+        })
+        .join("");
+    }
+
+    // Show the popup
+    const popup = document.getElementById("cart-popup");
+    if (!popup) {
+      console.error("❌ cart-popup element not found!");
+      return;
+    }
+
+    popup.style.display = "block";
+    console.log("👀 Cart popup displayed");
+
+    // Update cart count
+    cartCount = lines.reduce((sum, e) => sum + (e.node.quantity || 0), 0);
+    console.log("🔢 Updated cart count:", cartCount);
+
     updateCartCounter();
     updateCheckoutButton();
   } catch (err) {
-    console.error("Error showing cart popup:", err);
+    console.error("❌ Error showing cart popup:", err);
+    const ul = document.getElementById("cart-items");
+    if (ul) ul.innerHTML = "<li>Error loading cart items.</li>";
   }
-}
 
+  if (!cachedCart) {
+    cachedCart = await fetchCart(cartId);
+  }
+  renderCart(cachedCart);
+}
+// ----- UPDATE CART FROM SERVER (FIXED) -----
 async function updateCartFromServer() {
   try {
     await getOrCreateCheckout();
@@ -613,11 +987,25 @@ async function updateCartFromServer() {
     const query = `
       query getCart($cartId: ID!) {
         cart(id: $cartId) {
+          checkoutUrl
           lines(first: 100) {
-            edges { 
-              node { 
-                quantity 
-              } 
+            edges {
+              node {
+                id
+                quantity
+                attributes { key value }
+                merchandise {
+                  ... on ProductVariant {
+                    id
+                    title
+                    image { url altText }
+                    product { 
+                      title 
+                      id
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -637,27 +1025,86 @@ async function updateCartFromServer() {
     );
 
     const data = await res.json();
+    const lines = data.data?.cart?.lines?.edges || [];
 
-    if (data.data?.cart?.lines) {
-      const lines = data.data.cart.lines.edges;
-      cartCount = lines.reduce((sum, e) => sum + e.node.quantity, 0);
-    } else {
-      cartCount = 0;
+    // Sync our local cart state with server
+    cartItems.clear();
+    lines.forEach((line) => {
+      const productId = line.node.merchandise.product.id;
+      const uploadedFileAttr = line.node.attributes?.find(
+        (a) => a.key === "Uploaded File"
+      );
+
+      if (uploadedFileAttr) {
+        cartItems.set(productId, {
+          fileUrl: uploadedFileAttr.value,
+          variantId: line.node.merchandise.id,
+          lineId: line.node.id,
+        });
+        disableProductUpload(productId);
+      }
+    });
+
+    cartCount = lines.reduce((sum, line) => sum + (line.node.quantity || 0), 0);
+
+    // Update checkout URL if it changed
+    if (data.data?.cart?.checkoutUrl) {
+      checkoutUrl = data.data.cart.checkoutUrl;
+      localStorage.setItem("checkoutUrl", checkoutUrl);
     }
+
+    updateCartCounter();
+    updateCheckoutButton();
   } catch (error) {
     console.error("Error updating cart from server:", error);
     cartCount = 0;
+    updateCartCounter();
+    updateCheckoutButton();
   }
 }
 
+function disableProductUpload(productId) {
+  const uploadInput = document.getElementById(`upload-${productId}`);
+  const addButton = uploadInput
+    ?.closest(".product-info")
+    .querySelector(".add-to-cart-btn");
+
+  if (uploadInput) {
+    uploadInput.disabled = true;
+    uploadInput.style.opacity = "0.5";
+    uploadInput.style.pointerEvents = "none";
+  }
+
+  if (addButton) {
+    addButton.disabled = true;
+    addButton.textContent = "Added!";
+    addButton.style.opacity = "0.7";
+    addButton.style.cursor = "not-allowed";
+  }
+}
+
+// Enhanced clearCart function
 async function clearCart() {
   try {
     await getOrCreateCheckout();
 
-    // Fetch all line IDs
     const query = `query getCart($cartId: ID!) {
-      cart(id: $cartId) { lines(first: 100) { edges { node { id } } } }
+      cart(id: $cartId) { 
+        lines(first: 100) { 
+          edges { 
+            node { 
+              id 
+              merchandise {
+                ... on ProductVariant {
+                  product { id }
+                }
+              }
+            } 
+          } 
+        } 
+      }
     }`;
+
     const res = await fetch(
       `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
       {
@@ -669,11 +1116,11 @@ async function clearCart() {
         body: JSON.stringify({ query, variables: { cartId: checkoutId } }),
       }
     );
-    const lineIds = res.ok
-      ? (await res.json()).data?.cart?.lines?.edges?.map((e) => e.node.id) || []
-      : [];
 
-    // Remove all lines
+    const responseData = await res.json();
+    const lines = responseData.data?.cart?.lines?.edges || [];
+    const lineIds = lines.map((e) => e.node.id);
+
     if (lineIds.length > 0) {
       const mutation = `mutation removeCartLines($cartId: ID!, $lineIds: [ID!]!) {
         cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
@@ -681,6 +1128,7 @@ async function clearCart() {
           userErrors { field message }
         }
       }`;
+
       await fetch(`https://${shopDomain}/api/${API_VERSION}/graphql.json`, {
         method: "POST",
         headers: {
@@ -692,9 +1140,16 @@ async function clearCart() {
           variables: { cartId: checkoutId, lineIds },
         }),
       });
+
+      // Re-enable all products that were in cart
+      lines.forEach((line) => {
+        const productId = line.node.merchandise.product.id;
+        enableProductUpload(productId);
+      });
     }
 
-    // Reset state
+    // Clear our local tracking
+    cartItems.clear();
     cartCount = 0;
     checkoutUrl = null;
     updateCartCounter();
@@ -703,6 +1158,74 @@ async function clearCart() {
       "<li>Your bag is empty.</li>";
   } catch (err) {
     console.error("Error clearing cart:", err);
+  }
+}
+
+async function removeFromCart(lineId, productId) {
+  try {
+    const mutation = `
+      mutation removeCartLines($cartId: ID!, $lineIds: [ID!]!) {
+        cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
+          cart { 
+            lines(first: 100) { 
+              edges { 
+                node { 
+                  id 
+                  quantity 
+                  merchandise {
+                    ... on ProductVariant {
+                      product { id }
+                    }
+                  }
+                } 
+              } 
+            } 
+          }
+          userErrors { field message }
+        }
+      }
+    `;
+
+    const response = await fetch(
+      `https://${shopDomain}/api/${API_VERSION}/graphql.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Storefront-Access-Token": token,
+        },
+        body: JSON.stringify({
+          query: mutation,
+          variables: {
+            cartId: checkoutId,
+            lineIds: [lineId],
+          },
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (result.data?.cartLinesRemove?.userErrors?.length > 0) {
+      throw new Error(result.data.cartLinesRemove.userErrors[0].message);
+    }
+
+    // Remove from our tracking and re-enable upload
+    cartItems.delete(productId);
+    enableProductUpload(productId);
+
+    // Update cart count
+    const lines = result.data?.cartLinesRemove?.cart?.lines?.edges || [];
+    cartCount = lines.reduce((sum, e) => sum + (e.node.quantity || 0), 0);
+
+    updateCartCounter();
+    updateCheckoutButton();
+
+    // Refresh cart popup
+    await showCartPopup();
+  } catch (err) {
+    console.error("Error removing item from cart:", err);
+    alert("Error removing item: " + err.message);
   }
 }
 
@@ -725,15 +1248,14 @@ function addCheckoutButton() {
     popup.appendChild(btn);
   }
 
-  // Check if cart is empty
   if (cartCount === 0) {
     btn.href = "#";
     btn.onclick = (e) => {
       e.preventDefault();
       alert("Your bag is empty.");
     };
-    btn.style.opacity = "0.6"; // optional: show disabled look
-    btn.style.pointerEvents = "auto"; // keep clickable for alert
+    btn.style.opacity = "0.6";
+    btn.style.pointerEvents = "auto";
   } else {
     btn.href = checkoutUrl || "#";
     btn.target = "_blank";
@@ -742,250 +1264,32 @@ function addCheckoutButton() {
   }
 }
 
-// Order Tracking - Redirect to Shopify Order Status Page
-function handleTrackOrder() {
-  // Close the chat widget first
-  closeChatWidget();
+// New function to re-enable upload when item is removed from cart
+function enableProductUpload(productId) {
+  const fileInput = document.getElementById(`upload-${productId}`);
+  const addButton = document.querySelector(
+    `[data-product-id="${productId}"] .add-to-cart-btn`
+  );
 
-  // Show the tracking modal
-  showTrackingModal();
-}
+  if (fileInput) {
+    fileInput.disabled = false;
+    fileInput.style.opacity = "1";
+    fileInput.value = ""; // Clear the file input
 
-function showTrackingModal() {
-  // Create modal if it doesn't exist
-  let modal = document.getElementById("tracking-modal");
-  if (!modal) {
-    modal = createTrackingModal();
-    document.body.appendChild(modal);
+    // Remove any preview image
+    const preview = fileInput.parentElement.querySelector("img");
+    if (preview) preview.remove();
+
+    // Remove notice
+    const notice = fileInput.parentElement.querySelector(".cart-notice");
+    if (notice) notice.remove();
   }
 
-  // Show the modal
-  modal.style.display = "flex";
-
-  // Focus on the first input
-  setTimeout(() => {
-    const firstInput = modal.querySelector("input");
-    if (firstInput) firstInput.focus();
-  }, 100);
-}
-
-function createTrackingModal() {
-  const modal = document.createElement("div");
-  modal.id = "tracking-modal";
-  modal.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-  `;
-
-  modal.innerHTML = `
-    <div style="
-      background: white;
-      border-radius: 12px;
-      padding: 30px;
-      max-width: 400px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-      position: relative;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-    ">
-      <button onclick="closeTrackingModal()" style="
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        color: #666;
-        padding: 5px;
-      ">×</button>
-      
-      <div style="text-align: center; margin-bottom: 25px;">
-        <i class="fa-solid fa-truck" style="font-size: 48px; color: #007bff; margin-bottom: 15px;"></i>
-        <h2 style="margin: 0; color: #333;">Track Your Order</h2>
-      </div>
-      
-      <form onsubmit="trackOrder(event)" style="display: flex; flex-direction: column; gap: 20px;">
-        <div>
-          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">
-            Order Number
-          </label>
-          <input 
-            type="text" 
-            id="order-number" 
-            placeholder="e.g., #1001 or 1001"
-            required
-            style="
-              width: 100%;
-              padding: 12px;
-              border: 2px solid #ddd;
-              border-radius: 8px;
-              font-size: 16px;
-              box-sizing: border-box;
-            "
-          >
-        </div>
-        
-        <div>
-          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #333;">
-            Email Address
-          </label>
-          <input 
-            type="email" 
-            id="email-address" 
-            placeholder="Enter your email address"
-            required
-            style="
-              width: 100%;
-              padding: 12px;
-              border: 2px solid #ddd;
-              border-radius: 8px;
-              font-size: 16px;
-              box-sizing: border-box;
-            "
-          >
-        </div>
-        
-        <button type="submit" id="track-btn" style="
-          background: linear-gradient(135deg, #007bff, #0056b3);
-          color: white;
-          border: none;
-          padding: 14px 20px;
-          border-radius: 8px;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: transform 0.2s;
-        " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-          <i class="fa-solid fa-search"></i> Track Order
-        </button>
-        
-        <div id="tracking-message" style="
-          display: none;
-          padding: 12px;
-          border-radius: 8px;
-          text-align: center;
-          font-weight: 500;
-        "></div>
-        
-        <div style="
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 8px;
-          font-size: 14px;
-          color: #666;
-        ">
-          <p style="margin: 0 0 10px 0; font-weight: 600;">💡 Tips:</p>
-          <ul style="margin: 0; padding-left: 20px;">
-            <li>Find your order number in your confirmation email</li>
-            <li>Use the same email used during checkout</li>
-            <li>Orders may take 24 hours to show tracking info</li>
-          </ul>
-        </div>
-      </form>
-    </div>
-  `;
-
-  return modal;
-}
-
-function trackOrder(event) {
-  event.preventDefault();
-
-  const orderNumber = document.getElementById("order-number").value.trim();
-  const email = document.getElementById("email-address").value.trim();
-  const messageDiv = document.getElementById("tracking-message");
-  const trackBtn = document.getElementById("track-btn");
-
-  // Basic validation
-  if (!orderNumber || !email) {
-    showMessage("Please fill in all fields", "error");
-    return;
+  if (addButton) {
+    addButton.disabled = false;
+    addButton.textContent = "Add to Cart";
+    addButton.style.opacity = "1";
   }
-
-  if (!isValidEmail(email)) {
-    showMessage("Please enter a valid email address", "error");
-    return;
-  }
-
-  // Show loading state
-  trackBtn.innerHTML =
-    '<i class="fa-solid fa-spinner fa-spin"></i> Redirecting...';
-  trackBtn.disabled = true;
-
-  // Clean order number (remove # if present)
-  const cleanOrderNumber = orderNumber.replace("#", "");
-
-  // Construct Shopify order status URL
-  const orderStatusUrl = `https://${shopDomain}/tools/order-status?order_number=${cleanOrderNumber}&email=${encodeURIComponent(
-    email
-  )}`;
-
-  // Show success message
-  showMessage("Taking you to your order status page...", "success");
-
-  // Redirect in the same tab after a short delay
-  setTimeout(() => {
-    window.location.href = orderStatusUrl;
-  }, 1500);
-}
-
-function showMessage(message, type) {
-  const messageDiv = document.getElementById("tracking-message");
-  const isError = type === "error";
-
-  messageDiv.style.cssText = `
-    display: block;
-    padding: 12px;
-    border-radius: 8px;
-    text-align: center;
-    font-weight: 500;
-    background: ${isError ? "#fee" : "#d4edda"};
-    color: ${isError ? "#dc3545" : "#155724"};
-    border: 1px solid ${isError ? "#fecaca" : "#c3e6cb"};
-  `;
-
-  messageDiv.innerHTML = `
-    <i class="fa-solid fa-${
-      isError ? "exclamation-triangle" : "check-circle"
-    }"></i>
-    ${message}
-  `;
-}
-
-function closeTrackingModal() {
-  const modal = document.getElementById("tracking-modal");
-  if (modal) {
-    modal.style.display = "none";
-
-    // Reset form
-    const orderInput = document.getElementById("order-number");
-    const emailInput = document.getElementById("email-address");
-    const messageDiv = document.getElementById("tracking-message");
-    const trackBtn = document.getElementById("track-btn");
-
-    if (orderInput) orderInput.value = "";
-    if (emailInput) emailInput.value = "";
-    if (messageDiv) messageDiv.style.display = "none";
-    if (trackBtn) {
-      trackBtn.innerHTML = '<i class="fa-solid fa-search"></i> Track Order';
-      trackBtn.disabled = false;
-    }
-  }
-}
-
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
 }
 
 // Close modal when clicking outside
@@ -1003,19 +1307,96 @@ document.addEventListener("keydown", function (event) {
   }
 });
 
-/* // Redirect to Shopify login page
-document.getElementById("follow-store-btn").addEventListener("click", () => {
-  // Replace with your Shopify store URL
-  const shopLoginUrl = shopDomain;
-
-  // Optional: Add redirect to a 'thank you' page after login
-  const redirectAfterLogin = "?return_to=/pages/thank-you-follow";
-
-  window.location.href = shopLoginUrl + redirectAfterLogin;
-}); */
-
-document.getElementById("login-icon").addEventListener("click", () => {
-  // Optional: redirect back to a page after login
-  const returnUrl = "/"; // homepage or current page
-  window.location.href = `${shopDomain}/account/login?return_url=${returnUrl}`;
+// Login functionality
+document.addEventListener("DOMContentLoaded", function () {
+  const loginIcon = document.getElementById("login-icon");
+  if (loginIcon) {
+    loginIcon.addEventListener("click", () => {
+      const returnUrl = "/";
+      window.location.href = `https://${shopDomain}/account/login?return_url=${returnUrl}`;
+    });
+  }
 });
+
+// Debug function for testing cart
+function debugCart() {
+  console.log("=== CART DEBUG INFO ===");
+  console.log("Shop Domain:", shopDomain);
+  console.log("Token:", token ? "Set" : "Not set");
+  console.log("Checkout ID:", checkoutId);
+  console.log("Checkout URL:", checkoutUrl);
+  console.log("Cart Count:", cartCount);
+  console.log("LocalStorage checkoutId:", localStorage.getItem("checkoutId"));
+  console.log("LocalStorage checkoutUrl:", localStorage.getItem("checkoutUrl"));
+}
+
+window.removeFromCart = removeFromCart;
+
+async function fetchCart(cartId) {
+  const query = `query getCart($cartId: ID!) {
+        cart(id: $cartId) {
+            id
+            lines(first: 10) {
+                edges {
+                    node {
+                        id
+                        quantity
+                        attributes { key value }
+                        merchandise { ... on ProductVariant { id title image { url } } }
+                    }
+                }
+            }
+        }
+    }`;
+
+  const res = await fetch("/your-graphql-endpoint", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables: { cartId } }),
+  });
+
+  const data = await res.json();
+  return data.data.cart;
+}
+
+function renderCart(cart) {
+  const popup = document.getElementById("cartPopup");
+  popup.innerHTML = ""; // Clear popup
+
+  cart.lines.edges.forEach((edge, index) => {
+    const item = edge.node;
+
+    // Create cart item element
+    const div = document.createElement("div");
+    div.classList.add("cart-item");
+
+    // Use thumbnail for faster load
+    const imgUrl = item.attributes.find(
+      (attr) => attr.key === "uploaded_file"
+    )?.value;
+    const thumbUrl = imgUrl
+      ? imgUrl.replace("/upload/", "/upload/w_200,h_200,c_fit/")
+      : "";
+
+    div.innerHTML = `
+            <img src="${thumbUrl}" alt="Item ${index + 1}" />
+            <div class="item-info">
+                <p>${item.merchandise.title}</p>
+                <p>Quantity: ${item.quantity}</p>
+            </div>
+        `;
+
+    popup.appendChild(div);
+  });
+
+  // Update cart count
+  const cartCount = cart.lines.edges.length;
+  document.getElementById("cartCount").textContent = cartCount;
+
+  popup.style.display = "block"; // Show popup
+}
+
+// Optional: clear cache when cart changes
+function clearCartCache() {
+  cachedCart = null;
+}

@@ -72,6 +72,11 @@
   border-bottom: 0.0625rem solid rgba(0, 0, 0, 0.05);
 }
 
+#cart-items img {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;

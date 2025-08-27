@@ -58,7 +58,7 @@ chatWidget.addEventListener("click", function (e) {
 
 // Track Order button
 function handleTrackOrder() {
-  window.location.href = "/pages/order-lookup"; // keeps your current functionality
+  window.location.href = "/tools/order-status";
   closeChatWidget();
 }
 
